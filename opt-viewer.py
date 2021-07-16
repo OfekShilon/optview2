@@ -295,11 +295,11 @@ def generate_report(all_remarks,
     _render_file_bound = functools.partial(_render_file, source_dir, output_dir, context, no_highlight)
     if should_print_progress:
         print('Rendering HTML files...')
-    optpmap.pmap(_render_file_bound,
-                 file_remarks.items(),
-                 num_jobs,
-                 should_print_progress)
-
+    optpmap.pmap(func=_render_file_bound,
+                 iterable=file_remarks.items(),
+                 processes=num_jobs,
+                 should_print_progress=should_print_progress,
+                 remarks_src_dir=None)
 
 def main():
     parser = argparse.ArgumentParser(description=desc)
@@ -357,6 +357,11 @@ def main():
         action='store_true',
         help='Collect all optimization remarks, not just failures')
 
+    parser.add_argument(
+        '--annotate-external',
+        action='store_true',
+        help='Annotate all files, including system headers')
+
     # Do not make this a global variable.  Values needed to be propagated through
     # to individual classes and functions to be portable with multiprocessing across
     # Windows and non-Windows.
@@ -371,11 +376,16 @@ def main():
         parser.error("No *.opt.yaml files found")
         sys.exit(1)
 
+    remarks_src_dir = None
+    if not args.annotate_external:
+        remarks_src_dir = args.source_dir
+
     all_remarks, file_remarks, should_display_hotness = \
         optrecord.gather_results(filenames=files, num_jobs=args.jobs,
                                  should_print_progress=print_progress,
                                  pass_filter=args.pass_filter,
-                                 collect_all_remarks=args.collect_all_remarks)
+                                 collect_all_remarks=args.collect_all_remarks,
+                                 remarks_src_dir=remarks_src_dir)
 
     map_remarks(all_remarks)
 

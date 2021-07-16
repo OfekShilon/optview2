@@ -290,8 +290,9 @@ def get_remarks(input_file, remarks_src_dir, pass_filter=None, collect_all_remar
             if not collect_all_remarks and not (isinstance(remark, optrecord.Missed) | isinstance(remark, optrecord.Failure)):
                 continue
 
-            if remarks_src_dir is not None and not remark.File.startswith(remarks_src_dir):
-                continue
+            if remarks_src_dir is not None:
+                if not remark.File.startswith(".") and not remark.File.startswith(remarks_src_dir):
+                    continue
 
             if pass_filter_e and not pass_filter_e.search(remark.Pass):
                 continue

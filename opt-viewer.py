@@ -240,7 +240,7 @@ class IndexRenderer:
 </html>''', file=self.stream)
 
 
-def _render_file(source_dir, output_dir, ctx, no_highlight, entry, pass_filter, collect_all_remarks):
+def _render_file(source_dir, output_dir, ctx, no_highlight, entry, pass_filter, collect_all_remarks, remarks_src_dir):
     global context
     context = ctx
     filename, remarks = entry

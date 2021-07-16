@@ -352,6 +352,11 @@ def main():
         default='',
         help='Only display remarks from passes matching filter expression')
 
+    parser.add_argument(
+        '--all-remarks',
+        action='store_true',
+        help='Collect all optimization remarks, not just failures')
+
     # Do not make this a global variable.  Values needed to be propagated through
     # to individual classes and functions to be portable with multiprocessing across
     # Windows and non-Windows.
@@ -367,7 +372,7 @@ def main():
         sys.exit(1)
 
     all_remarks, file_remarks, should_display_hotness = \
-        optrecord.gather_results(files, args.jobs, print_progress, args.filter)
+        optrecord.gather_results(files, args.jobs, print_progress, args.filter, args.all_remarks)
 
     map_remarks(all_remarks)
 

@@ -5,6 +5,8 @@ from __future__ import print_function
 import io
 import yaml
 # Try to use the C parser.
+import optrecord
+
 try:
     from yaml import CLoader as Loader
 except ImportError:
@@ -268,7 +270,7 @@ class Missed(Remark):
 class Failure(Missed):
     yaml_tag = '!Failure'
 
-def get_remarks(input_file, filter_=None):
+def get_remarks(input_file, pass_filter=None, all_remarks=False):
     max_hotness = 0
     all_remarks = dict()
     file_remarks = defaultdict(functools.partial(defaultdict, list))
@@ -277,12 +279,15 @@ def get_remarks(input_file, filter_=None):
         docs = yaml.load_all(f, Loader=Loader)
 
         filter_e = None
-        if filter_:
-            filter_e = re.compile(filter_)
+        if pass_filter:
+            filter_e = re.compile(pass_filter)
         for remark in docs:
             remark.canonicalize()
             # Avoid remarks withoug debug location or if they are duplicated
             if not hasattr(remark, 'DebugLoc') or remark.key in all_remarks:
+                continue
+
+            if not all_remarks and not (isinstance(remark, optrecord.Missed) | isinstance(remark, optrecord.Failure)):
                 continue
 
             if filter_e and not filter_e.search(remark.Pass):
@@ -302,13 +307,13 @@ def get_remarks(input_file, filter_=None):
     return max_hotness, all_remarks, file_remarks
 
 
-def gather_results(filenames, num_jobs, should_print_progress, filter_=None):
+def gather_results(filenames, num_jobs, should_print_progress, pass_filter=None, all_remarks=False):
     if should_print_progress:
         print('Reading YAML files...')
     if not Remark.demangler_proc:
         Remark.set_demangler(Remark.default_demangler)
     remarks = optpmap.pmap(
-        get_remarks, filenames, num_jobs, should_print_progress, filter_)
+        get_remarks, filenames, num_jobs, should_print_progress, pass_filter, all_remarks)
     max_hotness = max(entry[0] for entry in remarks)
 
     def merge_file_remarks(file_remarks_job, all_remarks, merged):

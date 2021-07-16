@@ -200,10 +200,11 @@ class IndexRenderer:
         escaped_name = html.escape(r.DemangledFunctionName)
         print(u'''
 <tr>
-<td class=\"column-entry-{odd}\"><a href={r.Link}>{r.DebugLocString}</a></td>
-<td class=\"column-entry-{odd}\">{r.RelativeHotness}</td>
-<td class=\"column-entry-{odd}\">{escaped_name}</td>
 <td class=\"column-entry-{r.color}\">{r.PassWithDiffPrefix}</td>
+<td class=\"column-entry-{odd}\"><a href={r.Link}>{r.DebugLocString}</a></td>
+<td class=\"column-entry-{odd}\">{escaped_name}></td>
+<td class=\"column-entry-{odd}\">{r.RelativeHotness}</td>
+
 </tr>'''.format(**locals()), file=self.stream)
 
     def render(self, all_remarks):
@@ -215,13 +216,15 @@ class IndexRenderer:
 </head>
 <body>
 <div class="centered">
-<table>
+<table class="sortable">
+<thead>
 <tr>
-<td>Source Location</td>
-<td>Hotness</td>
-<td>Function</td>
-<td>Pass</td>
-</tr>''', file=self.stream)
+<th><div>Pass</div></td>
+<th><div>Source Location</div></td>
+<th><div>Function</div></td>
+<th><div>Hotness</div></td>
+</tr>
+</thead>''', file=self.stream)
 
         max_entries = None
         if self.should_display_hotness:
@@ -232,6 +235,7 @@ class IndexRenderer:
                 self.render_entry(remark, i % 2)
         print(u'''
 </table>
+<script src="sorttable.js"></script>
 </body>
 </html>''', file=self.stream)
 
@@ -285,6 +289,8 @@ def generate_report(all_remarks,
 
     shutil.copy(os.path.join(os.path.dirname(os.path.realpath(__file__)),
             "style.css"), output_dir)
+    shutil.copy(os.path.join(os.path.dirname(os.path.realpath(__file__)),
+            "sorttable.js"), output_dir)
 
     _render_file_bound = functools.partial(_render_file, source_dir, output_dir, context, no_highlight)
     if should_print_progress:

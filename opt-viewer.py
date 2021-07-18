@@ -12,7 +12,7 @@ import os.path
 import re
 import shutil
 import sys
-
+from datetime import datetime
 from pygments import highlight
 from pygments.lexers.c_cpp import CppLexer
 from pygments.formatters import HtmlFormatter
@@ -376,6 +376,8 @@ def main():
         parser.error("No *.opt.yaml files found")
         sys.exit(1)
 
+    start_time = datetime.now()
+
     remarks_src_dir = None
     if not args.annotate_external:
         remarks_src_dir = args.source_dir
@@ -398,6 +400,8 @@ def main():
                     args.max_hottest_remarks_on_index,
                     args.jobs,
                     print_progress)
+    end_time = datetime.now()
+    print("Ran for ", end_time-start_time)
 
 if __name__ == '__main__':
     main()

@@ -52,6 +52,5 @@ def pmap(func, iterable, processes, should_print_progress,
         pool.close()
         pool.join()
 
-    if should_print_progress:
-        sys.stdout.write('\r')
+    sys.stdout.write('\n')
     return result

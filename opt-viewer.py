@@ -40,6 +40,9 @@ def suppress(remark):
         return remark.getArgDict()['Function'][0].startswith('\"Swift.')
     elif remark.Name == 'sil.Inlined':
         return remark.getArgDict()['Callee'][0].startswith(('\"Swift.', '\"specialized Swift.'))
+    elif remark.Pass == 'inline':
+        return not remark.message.startswith("istra")
+
     return False
 
 class SourceFileRenderer:
@@ -200,8 +203,9 @@ class IndexRenderer:
         escaped_name = html.escape(r.DemangledFunctionName)
         print(u'''
 <tr>
-<td class=\"column-entry-{r.color}\">{r.PassWithDiffPrefix}</td>
+<td class=\"column-entry-{r.color}\">{r.Name}</td>
 <td class=\"column-entry-{odd}\"><a href={r.Link}>{r.DebugLocString}</a></td>
+<td class=\"column-entry-{odd}\">{r.message}</a></td>
 <td class=\"column-entry-{odd}\">{escaped_name}></td>
 <td class=\"column-entry-{odd}\">{r.RelativeHotness}</td>
 
@@ -219,8 +223,9 @@ class IndexRenderer:
 <table class="sortable">
 <thead>
 <tr>
-<th><div>Pass</div></td>
+<th><div>Desc</div></td>
 <th><div>Source Location</div></td>
+<th><div>Message</div></td>
 <th><div>Function</div></td>
 <th><div>Hotness</div></td>
 </tr>

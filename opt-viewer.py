@@ -281,10 +281,26 @@ def generate_report(all_remarks,
 
     if should_print_progress:
         print('Rendering index page...')
+
+    print("  {:d} raw remarks".format(len(all_remarks)))
+    sorted_remarks = sorted(optrecord.itervalues(all_remarks), key=lambda r: (r.File, r.Line, r.Column, r.PassWithDiffPrefix))
+    unique_lines_remarks = [sorted_remarks[0]]
+    for rmk in sorted_remarks:
+        last_unq_rmk = unique_lines_remarks[-1]
+        last_rmk_key = (last_unq_rmk.File, last_unq_rmk.Line, last_unq_rmk.Column, last_unq_rmk.PassWithDiffPrefix)
+        rmk_key = (rmk.File, rmk.Line, rmk.Column, rmk.PassWithDiffPrefix)
+        if rmk_key != last_rmk_key:
+            unique_lines_remarks.append(rmk)
+    print("  {:d} unique source locations".format(len(unique_lines_remarks)))
+
+    filtered_remarks = [r for r in unique_lines_remarks if not suppress(r)]
+    print("  {:d} after filtering irrelevant".format(len(filtered_remarks)))
+
     if should_display_hotness:
-        sorted_remarks = sorted(optrecord.itervalues(all_remarks), key=lambda r: (r.Hotness, r.File, r.Line, r.Column, r.PassWithDiffPrefix, r.yaml_tag, r.Function), reverse=True)
+        sorted_remarks = sorted(filtered_remarks, key=lambda r: (r.Hotness, r.File, r.Line, r.Column, r.PassWithDiffPrefix, r.yaml_tag, r.Function), reverse=True)
     else:
-        sorted_remarks = sorted(optrecord.itervalues(all_remarks), key=lambda r: (r.File, r.Line, r.Column, r.PassWithDiffPrefix, r.yaml_tag, r.Function))
+        sorted_remarks = sorted(filtered_remarks, key=lambda r: (r.File, r.Line, r.Column, r.PassWithDiffPrefix, r.yaml_tag, r.Function))
+
     IndexRenderer(output_dir, should_display_hotness, max_hottest_remarks_on_index).render(sorted_remarks)
 
     shutil.copy(os.path.join(os.path.dirname(os.path.realpath(__file__)),

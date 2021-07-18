@@ -59,7 +59,7 @@ class Remark(yaml.YAMLObject):
     # Work-around for http://pyyaml.org/ticket/154.
     yaml_loader = Loader
 
-    default_demangler = 'c++filt -n'
+    default_demangler = 'c++filt -n -p'
     demangler_proc = None
 
     @classmethod
@@ -275,6 +275,7 @@ def get_remarks(input_file, remarks_src_dir, pass_filter=None, collect_all_remar
     all_remarks = dict()
     file_remarks = defaultdict(functools.partial(defaultdict, list))
 
+    #TODO: filter unique pass+name+file+line loc *here*
     with io.open(input_file, encoding = 'utf-8') as f:
         docs = yaml.load_all(f, Loader=Loader)
 

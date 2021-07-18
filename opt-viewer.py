@@ -40,8 +40,6 @@ def suppress(remark):
         return remark.getArgDict()['Function'][0].startswith('\"Swift.')
     elif remark.Name == 'sil.Inlined':
         return remark.getArgDict()['Callee'][0].startswith(('\"Swift.', '\"specialized Swift.'))
-    elif remark.Pass == 'inline':
-        return not remark.message.startswith("istra")
 
     return False
 

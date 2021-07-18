@@ -270,18 +270,18 @@ class Missed(Remark):
 class Failure(Missed):
     yaml_tag = '!Failure'
 
-def get_remarks(input_file, remarks_src_dir, pass_filter=None, collect_all_remarks=False):
+def get_remarks(input_file, remarks_src_dir, remark_filter=None, collect_all_remarks=False):
     max_hotness = 0
     all_remarks = dict()
     file_remarks = defaultdict(functools.partial(defaultdict, list))
 
-    #TODO: filter unique pass+name+file+line loc *here*
+    #TODO: filter unique name+file+line loc *here*
     with io.open(input_file, encoding = 'utf-8') as f:
         docs = yaml.load_all(f, Loader=Loader)
 
-        pass_filter_e = None
-        if pass_filter:
-            pass_filter_e = re.compile(pass_filter)
+        remark_filter_e = None
+        if remark_filter:
+            remark_filter_e = re.compile(remark_filter)
         for remark in docs:
             remark.canonicalize()
             # Avoid remarks withoug debug location or if they are duplicated
@@ -295,7 +295,7 @@ def get_remarks(input_file, remarks_src_dir, pass_filter=None, collect_all_remar
                 if not remark.File.startswith(".") and not remark.File.startswith(remarks_src_dir):
                     continue
 
-            if pass_filter_e and not pass_filter_e.search(remark.Pass):
+            if remark_filter_e and not remark_filter_e.search(remark.Name):
                 continue
 
             all_remarks[remark.key] = remark
@@ -313,13 +313,13 @@ def get_remarks(input_file, remarks_src_dir, pass_filter=None, collect_all_remar
 
 
 def gather_results(filenames, num_jobs, should_print_progress,
-                   remarks_src_dir, pass_filter=None, collect_all_remarks=False):
+                   remarks_src_dir, remark_filter=None, collect_all_remarks=False):
     if should_print_progress:
         print('Reading YAML files...')
     if not Remark.demangler_proc:
         Remark.set_demangler(Remark.default_demangler)
     remarks = optpmap.pmap(
-        get_remarks, filenames, num_jobs, should_print_progress, remarks_src_dir, pass_filter, collect_all_remarks)
+        get_remarks, filenames, num_jobs, should_print_progress, remarks_src_dir, remark_filter, collect_all_remarks)
     max_hotness = max(entry[0] for entry in remarks)
 
     def merge_file_remarks(file_remarks_job, all_remarks, merged):

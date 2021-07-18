@@ -243,7 +243,7 @@ class IndexRenderer:
 </html>''', file=self.stream)
 
 
-def _render_file(source_dir, output_dir, ctx, no_highlight, entry, pass_filter, collect_all_remarks, remarks_src_dir):
+def _render_file(source_dir, output_dir, ctx, no_highlight, entry, remark_filter, collect_all_remarks, remarks_src_dir):
     global context
     context = ctx
     filename, remarks = entry
@@ -367,9 +367,9 @@ def main():
         help='Set the demangler to be used (defaults to %s)' % optrecord.Remark.default_demangler)
 
     parser.add_argument(
-        '--pass-filter',
+        '--remark-filter',
         default='',
-        help='Only display remarks from optimization passes matching filter regex')
+        help='Only display optimization remarks with names matching filter regex')
 
     parser.add_argument(
         '--collect-all-remarks',
@@ -404,7 +404,7 @@ def main():
     all_remarks, file_remarks, should_display_hotness = \
         optrecord.gather_results(filenames=files, num_jobs=args.jobs,
                                  should_print_progress=print_progress,
-                                 pass_filter=args.pass_filter,
+                                 remark_filter=args.remark_filter,
                                  collect_all_remarks=args.collect_all_remarks,
                                  remarks_src_dir=remarks_src_dir)
 

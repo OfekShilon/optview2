@@ -1,6 +1,4 @@
-#!/usr/bin/env python
-
-from __future__ import print_function
+#!/usr/bin/env python3
 
 desc = '''Generate statistics about optimization records from the YAML files
 generated with -fsave-optimization-record and -fdiagnostics-show-hotness.
@@ -11,7 +9,6 @@ import optrecord
 import argparse
 import operator
 from collections import defaultdict
-from multiprocessing import cpu_count, Pool
 
 try:
     from guppy import hpy

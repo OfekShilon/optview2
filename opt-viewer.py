@@ -1,9 +1,6 @@
-#!/usr/bin/env python
-
-from __future__ import print_function
+#!/usr/bin/env python3
 
 import argparse
-import errno
 import functools
 import html
 import io
@@ -12,14 +9,18 @@ import os.path
 import re
 import shutil
 import sys
+import json
+import glob
+import pathlib
+import collections
 from datetime import datetime
 from pygments import highlight
 from pygments.lexers.c_cpp import CppLexer
 from pygments.formatters import HtmlFormatter
-
 import optpmap
 import optrecord
-
+import logging
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
 desc = '''Generate HTML output to visualize optimization records from the YAML files
 generated with -fsave-optimization-record and -fdiagnostics-show-hotness.
@@ -40,45 +41,28 @@ def suppress(remark):
         return remark.getArgDict()['Function'][0].startswith('\"Swift.')
     elif remark.Name == 'sil.Inlined':
         return remark.getArgDict()['Callee'][0].startswith(('\"Swift.', '\"specialized Swift.'))
-
+    elif remark.Pass == 'inline':
+        return remark.message.startswith('istra::AssertHolder') or not remark.message.startswith('istra')
     return False
 
-class SourceFileRenderer:
-    def __init__(self, source_dir, output_dir, filename, no_highlight):
-        self.filename = filename
-        existing_filename = None
-        if os.path.exists(filename):
-            existing_filename = filename
-        else:
-            fn = os.path.join(source_dir, filename)
-            if os.path.exists(fn):
-                existing_filename = fn
 
-        self.no_highlight = no_highlight
-        self.stream = io.open(os.path.join(output_dir, optrecord.html_file_name(filename)), 'w', encoding='utf-8')
-        if existing_filename:
-            self.source_stream = io.open(existing_filename, encoding='utf-8')
-        else:
-            self.source_stream = None
-            print(u'''
-<html>
-<h1>Unable to locate file {}</h1>
-</html>
-            '''.format(filename), file=self.stream)
+def render_file_source(source_dir, output_dir, filename, no_highlight, line_remarks):
+    html_filename = os.path.join(output_dir, optrecord.html_file_name(filename))
+    filename = filename if os.path.exists(filename) else os.path.join(source_dir, filename)
 
-        self.html_formatter = HtmlFormatter(encoding='utf-8')
-        self.cpp_lexer = CppLexer(stripnl=False)
+    html_formatter = HtmlFormatter(encoding='utf-8')
+    cpp_lexer = CppLexer(stripnl=False)
 
-    def render_source_lines(self, stream, line_remarks):
+    def render_source_lines(stream, line_remarks):
         file_text = stream.read()
 
-        if self.no_highlight:
+        if no_highlight:
             html_highlighted = file_text
         else:
             html_highlighted = highlight(
             file_text,
-                self.cpp_lexer,
-                self.html_formatter)
+                cpp_lexer,
+                html_formatter)
 
             # Note that the API is different between Python 2 and 3.  On
             # Python 3, pygments.highlight() returns a bytes object, so we
@@ -93,66 +77,84 @@ class SourceFileRenderer:
             html_highlighted = html_highlighted.replace('</pre></div>', '')
 
         for (linenum, html_line) in enumerate(html_highlighted.split('\n'), start=1):
-            print(u'''
-<tr>
-<td><a name=\"L{linenum}\">{linenum}</a></td>
-<td></td>
-<td></td>
-<td><div class="highlight"><pre>{html_line}</pre></div></td>
-</tr>'''.format(**locals()), file=self.stream)
+            yield [f'<a name="L{linenum}">{linenum}</a>', '', '', f'<div class="highlight"><pre>{html_line}</pre></div>', '']
 
             for remark in line_remarks.get(linenum, []):
                 if not suppress(remark):
-                    self.render_inline_remarks(remark, html_line)
+                    yield render_inline_remarks(remark, html_line)
 
-    def render_inline_remarks(self, r, line):
-        inlining_context = r.DemangledFunctionName
-        dl = context.caller_loc.get(r.Function)
+    def render_inline_remarks(remark, line):
+        inlining_context = remark.DemangledFunctionName
+        dl = context.caller_loc.get(remark.Function)
         if dl:
             dl_dict = dict(list(dl))
             link = optrecord.make_link(dl_dict['File'], dl_dict['Line'] - 2)
-            inlining_context = "<a href={link}>{r.DemangledFunctionName}</a>".format(**locals())
+            inlining_context = f"<a href={link}>{remark.DemangledFunctionName}</a>"
 
-        # Column is the number of characters *including* tabs, keep those and
-        # replace everything else with spaces.
-        indent = line[:max(r.Column, 1) - 1]
-        indent = re.sub('\S', ' ', indent)
+        start_line = re.sub("^<span>", "", line)
+        spaces = len(start_line) - len(start_line.lstrip())
+        indent = f"{spaces + 2}ch"
 
         # Create expanded message and link if we have a multiline message.
-        lines = r.message.split('\n')
+        lines = remark.message.split('\n')
         if len(lines) > 1:
             expand_link = '<a style="text-decoration: none;" href="" onclick="toggleExpandedMessage(this); return false;">+</a>'
             message = lines[0]
-            expand_message = u'''
+            other_lines = "\n".join(lines[1:])
+            expand_message = f'''
 <div class="full-info" style="display:none;">
-  <div class="col-left"><pre style="display:inline">{}</pre></div>
-  <div class="expanded col-left"><pre>{}</pre></div>
-</div>'''.format(indent, '\n'.join(lines[1:]))
+  <div class="expanded col-left" style="margin-left: {indent}"><pre>{other_lines}</pre></div>
+</div>'''
         else:
             expand_link = ''
             expand_message = ''
-            message = r.message
-        print(u'''
-<tr>
-<td></td>
-<td>{r.RelativeHotness}</td>
-<td class=\"column-entry-{r.color}\">{r.PassWithDiffPrefix}</td>
-<td><pre style="display:inline">{indent}</pre><span class=\"column-entry-yellow\">{expand_link} {message}&nbsp;</span>{expand_message}</td>
-<td class=\"column-entry-yellow\">{inlining_context}</td>
-</tr>'''.format(**locals()), file=self.stream)
+            message = remark.message
+        return ['',
+                remark.RelativeHotness,
+                {'class': f"column-entry-{remark.color}", 'text': remark.PassWithDiffPrefix},
+                {'class': 'column-entry-yellow', 'text': f'''<span style="margin-left: {indent};" class="indent-span">&bull; {expand_link} {message}&nbsp;</span>{expand_message}'''},
+                {'class': f"column-entry-yellow", 'text': inlining_context},
+                ]
 
-    def render(self, line_remarks):
-        if not self.source_stream:
+    with open(html_filename, "w", encoding='utf-8') as f: 
+        if not os.path.exists(filename):
+            f.write(f'''
+    <html>
+    <h1>Unable to locate file {filename}</h1>
+</html>''')
             return
+            
+        with open(filename, "r") as source_stream:
+            entries = list(render_source_lines(source_stream, line_remarks))
 
-        print(u'''
+        entries_summary = collections.Counter(e[2]['text'] for e in entries if isinstance(e[2], dict))
+        entries_summary_li = '\n'.join(f"<li>{key}: {value}" for key, value in entries_summary.items())
+
+        f.write(f'''
 <html>
-<title>{}</title>
 <meta charset="utf-8" />
 <head>
-<link rel='stylesheet' type='text/css' href='style.css'>
+<title>{os.path.basename(filename)}</title>
+<link rel="icon" type="image/png" href="assets/favicon.ico"/>
+<link rel='stylesheet' type='text/css' href='assets/style.css'>
+<link rel='stylesheet' type='text/css' href='https://cdn.datatables.net/1.10.25/css/jquery.dataTables.min.css'>
+<script src="https://code.jquery.com/jquery-3.5.1.js"></script>
+<script src="https://cdn.datatables.net/1.10.25/js/jquery.dataTables.min.js"></script>
+<script src="assets/colResizable-1.6.min.js"></script>
+</head>
+<body>
+<h1 class="filename-title">{os.path.abspath(filename)}</h1>
+<h3>Total of {len(entries_summary)} optimization issues</h3>
+<ul id='entries_summary'>
+{entries_summary_li}
+</ul>
+<p><a class='back' href='index.html'>Back</a></p>
+<table id="opt_table_code" class="" width="100%"></table>
+<p><a class='back' href='index.html'>Back</a></p>
+
 <script type="text/javascript">
-/* Simple helper to show/hide the expanded message of a remark. */
+var dataSet = {json.dumps(entries)};
+
 function toggleExpandedMessage(e) {{
   var FullTextElems = e.parentElement.parentElement.getElementsByClassName("full-info");
   if (!FullTextElems || FullTextElems.length < 1) {{
@@ -167,87 +169,120 @@ function toggleExpandedMessage(e) {{
     FullText.style.display = 'none';
   }}
 }}
+
+$(document).ready(function() {{
+    $('#opt_table_code').DataTable( {{
+        data: dataSet,
+        paging: false,
+        "ordering": false,
+        "asStripeClasses": [],
+        columns: [
+            {{ title: "Line" }},
+            {{ title: "Hotness" }},
+            {{ title: "Optimization" }},
+            {{ title: "Source" }},
+            {{ title: "Inline Context" }}
+        ],
+        columnDefs: [
+            {{
+                "targets": "_all",
+                "createdCell": function (td, data, rowData, row, col) {{
+                    if (data.constructor == Object && data['class'] !== undefined) {{
+                        $(td).addClass(data['class']);
+                    }}
+                }},
+                "render": function(data, type, row) {{
+                    if (data.constructor == Object && data['text'] !== undefined) {{
+                        return data['text'];
+                    }}
+                    return data;
+                }}
+            }}
+        ]
+    }} );
+    if (location.hash.length > 2) {{
+        var loc = location.hash.split("#")[1];
+        var aTag = $("a[name='" + loc + "']");
+        if (aTag.length > 0) {{
+            $('body').scrollTop(parseInt(aTag.offset().top));
+        }}
+    }}
+
+    $("#opt_table_code").colResizable()
+}} );
 </script>
-</head>
-<body>
-<div class="centered">
-<table class="source">
-<thead>
-<tr>
-<th style="width: 2%">Line</td>
-<th style="width: 3%">Hotness</td>
-<th style="width: 10%">Optimization</td>
-<th style="width: 70%">Source</td>
-<th style="width: 15%">Inline Context</td>
-</tr>
-</thead>
-<tbody>'''.format(os.path.basename(self.filename)), file=self.stream)
-        self.render_source_lines(self.source_stream, line_remarks)
-
-        print(u'''
-</tbody>
-</table>
 </body>
-</html>''', file=self.stream)
+</html>
+''')
 
+def render_index(output_dir, should_display_hotness, max_hottest_remarks_on_index, all_remarks):
+    def render_entry(remark):
+        return dict(description=remark.Name,
+                    loc=f"<a href={remark.Link}>{remark.DebugLocString}</a>",
+                    message=remark.message,
+                    functionName=remark.DemangledFunctionName,
+                    relativeHotness=remark.RelativeHotness,
+                    color=remark.color)
 
-class IndexRenderer:
-    def __init__(self, output_dir, should_display_hotness, max_hottest_remarks_on_index):
-        self.stream = io.open(os.path.join(output_dir, 'index.html'), 'w', encoding='utf-8')
-        self.should_display_hotness = should_display_hotness
-        self.max_hottest_remarks_on_index = max_hottest_remarks_on_index
+    max_entries = None
+    if should_display_hotness:
+        max_entries = max_hottest_remarks_on_index
 
-    def render_entry(self, r, odd):
-        escaped_name = html.escape(r.DemangledFunctionName)
-        print(u'''
-<tr>
-<td class=\"column-entry-{r.color}\">{r.Name}</td>
-<td class=\"column-entry-{odd}\"><a href={r.Link}>{r.DebugLocString}</a></td>
-<td class=\"column-entry-{odd}\">{r.message}</a></td>
-<td class=\"column-entry-{odd}\">{escaped_name}></td>
-<td class=\"column-entry-{odd}\">{r.RelativeHotness}</td>
+    entries = [render_entry(remark) for remark in all_remarks[:max_entries] if not suppress(remark)]
 
-</tr>'''.format(**locals()), file=self.stream)
-
-    def render(self, all_remarks):
-        print(u'''
+    index_path = os.path.join(output_dir, 'index.html')
+    with open(index_path, 'w', encoding='utf-8') as f:
+        f.write(f'''
 <html>
 <meta charset="utf-8" />
 <head>
-<link rel='stylesheet' type='text/css' href='style.css'>
+<link rel="icon" type="image/png" href="assets/favicon.ico"/>
+<link rel='stylesheet' type='text/css' href='assets/style.css'>
+<link rel='stylesheet' type='text/css' href='https://cdn.datatables.net/1.10.25/css/jquery.dataTables.min.css'>
+<script src="https://code.jquery.com/jquery-3.5.1.js"></script>
+<script src="https://cdn.datatables.net/1.10.25/js/jquery.dataTables.min.js"></script>
+<script src="assets/colResizable-1.6.min.js"></script>
+<title>Optimize Viewer</title>
 </head>
 <body>
 <div class="centered">
-<table class="sortable">
-<thead>
-<tr>
-<th><div>Desc</div></td>
-<th><div>Source Location</div></td>
-<th><div>Message</div></td>
-<th><div>Function</div></td>
-<th><div>Hotness</div></td>
-</tr>
-</thead>''', file=self.stream)
-
-        max_entries = None
-        if self.should_display_hotness:
-            max_entries = self.max_hottest_remarks_on_index
-
-        for i, remark in enumerate(all_remarks[:max_entries]):
-            if not suppress(remark):
-                self.render_entry(remark, i % 2)
-        print(u'''
-</table>
-<script src="sorttable.js"></script>
+<table id="opt_table" class="" width="100%"></table>
+</div>
+<script type="text/javascript">
+var dataSet = {json.dumps(entries)};
+$(document).ready(function() {{
+    $('#opt_table').DataTable( {{
+        data: dataSet,
+        "lengthMenu": [[100, 500, -1], [100, 500, "All"]],
+        columns: [
+            {{ title: "Location", data: "loc" }},
+            {{ title: "Description", data: "description" }},
+            {{ title: "Function", data: "functionName" }},
+            {{ title: "Message", data: "message" }},
+            {{ title: "Hotness", data: "relativeHotness" }},
+        ],
+        columnDefs: [
+            {{
+                "targets": [1],
+                "createdCell": function (td, data, rowData, row, col) {{
+                    $(td).addClass("column-entry-" + rowData['color']);
+                }},
+            }}
+        ]
+    }} );
+    $("#opt_table").colResizable()
+}} );
+</script>
 </body>
-</html>''', file=self.stream)
-
+</html>
+''')
+    return index_path
 
 def _render_file(source_dir, output_dir, ctx, no_highlight, entry, remark_filter, collect_all_remarks, remarks_src_dir):
     global context
     context = ctx
     filename, remarks = entry
-    SourceFileRenderer(source_dir, output_dir, filename, no_highlight).render(remarks)
+    render_file_source(source_dir, output_dir, filename, no_highlight, remarks)
 
 
 def map_remarks(all_remarks):
@@ -274,18 +309,12 @@ def generate_report(all_remarks,
                     max_hottest_remarks_on_index,
                     num_jobs,
                     should_print_progress):
-    try:
-        os.makedirs(output_dir)
-    except OSError as e:
-        if e.errno == errno.EEXIST and os.path.isdir(output_dir):
-            pass
-        else:
-            raise
+    pathlib.Path(output_dir).mkdir(parents=True, exist_ok=True)
 
     if should_print_progress:
-        print('Rendering index page...')
+        logging.info('Rendering index page...')
 
-    print("  {:d} raw remarks".format(len(all_remarks)))
+    logging.info(f"  {len(all_remarks):d} raw remarks")
     sorted_remarks = sorted(optrecord.itervalues(all_remarks), key=lambda r: (r.File, r.Line, r.Column, r.PassWithDiffPrefix))
     unique_lines_remarks = [sorted_remarks[0]]
     for rmk in sorted_remarks:
@@ -294,31 +323,36 @@ def generate_report(all_remarks,
         rmk_key = (rmk.File, rmk.Line, rmk.Column, rmk.PassWithDiffPrefix)
         if rmk_key != last_rmk_key:
             unique_lines_remarks.append(rmk)
-    print("  {:d} unique source locations".format(len(unique_lines_remarks)))
+    logging.info("  {:d} unique source locations".format(len(unique_lines_remarks)))
 
     filtered_remarks = [r for r in unique_lines_remarks if not suppress(r)]
-    print("  {:d} after filtering irrelevant".format(len(filtered_remarks)))
+    logging.info("  {:d} after filtering irrelevant".format(len(filtered_remarks)))
 
     if should_display_hotness:
         sorted_remarks = sorted(filtered_remarks, key=lambda r: (r.Hotness, r.File, r.Line, r.Column, r.PassWithDiffPrefix, r.yaml_tag, r.Function), reverse=True)
     else:
         sorted_remarks = sorted(filtered_remarks, key=lambda r: (r.File, r.Line, r.Column, r.PassWithDiffPrefix, r.yaml_tag, r.Function))
 
-    IndexRenderer(output_dir, should_display_hotness, max_hottest_remarks_on_index).render(sorted_remarks)
+    index_path = render_index(output_dir, should_display_hotness, max_hottest_remarks_on_index, sorted_remarks)
 
-    shutil.copy(os.path.join(os.path.dirname(os.path.realpath(__file__)),
-            "style.css"), output_dir)
-    shutil.copy(os.path.join(os.path.dirname(os.path.realpath(__file__)),
-            "sorttable.js"), output_dir)
+    if should_print_progress:
+        logging.info("Copying assets")
+    assets_path = pathlib.Path(output_dir) / "assets"
+    assets_path.mkdir(parents=True, exist_ok=True)
+    for filename in glob.glob(os.path.join(str(pathlib.Path(os.path.realpath(__file__)).parent), "assets", '*.*')):
+        shutil.copy(filename, assets_path)
 
     _render_file_bound = functools.partial(_render_file, source_dir, output_dir, context, no_highlight)
     if should_print_progress:
-        print('Rendering HTML files...')
+        logging.info('Rendering HTML files...')
     optpmap.pmap(func=_render_file_bound,
                  iterable=file_remarks.items(),
                  processes=num_jobs,
                  should_print_progress=should_print_progress,
                  remarks_src_dir=None)
+
+    if should_print_progress:
+        logging.info(f'Done - check the index page at file://{os.path.abspath(index_path)}')
 
 def main():
     parser = argparse.ArgumentParser(description=desc)
@@ -420,7 +454,7 @@ def main():
                     args.jobs,
                     print_progress)
     end_time = datetime.now()
-    print("Ran for ", end_time-start_time)
+    logging.info(f"Ran for {end_time-start_time}")
 
 if __name__ == '__main__':
     main()

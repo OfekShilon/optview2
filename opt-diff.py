@@ -1,6 +1,4 @@
-#!/usr/bin/env python
-
-from __future__ import print_function
+#!/usr/bin/env python3
 
 desc = '''Generate the difference of two YAML files into a new YAML file (works on
 pair of directories too).  A new attribute 'Added' is set to True or False

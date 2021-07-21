@@ -1,16 +1,19 @@
 #!/usr/bin/env python
 
-from __future__ import print_function
+import logging
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
 import io
 import yaml
+import pickle
+
 # Try to use the C parser.
 import optrecord
 
 try:
     from yaml import CLoader as Loader
 except ImportError:
-    print("For faster parsing, you may want to install libYAML for PyYAML")
+    logging.warning("For faster parsing, you may want to install libYAML for PyYAML")
     from yaml import Loader
 
 import html
@@ -315,11 +318,20 @@ def get_remarks(input_file, remarks_src_dir, remark_filter=None, collect_all_rem
 def gather_results(filenames, num_jobs, should_print_progress,
                    remarks_src_dir, remark_filter=None, collect_all_remarks=False):
     if should_print_progress:
-        print('Reading YAML files...')
+        logging.warning('Reading YAML files...')
     if not Remark.demangler_proc:
         Remark.set_demangler(Remark.default_demangler)
     remarks = optpmap.pmap(
         get_remarks, filenames, num_jobs, should_print_progress, remarks_src_dir, remark_filter, collect_all_remarks)
+
+#TODO: pass output dir
+    # with open(os.path.join("/home/ofek/", "remarks"), 'wb') as remarks_file:
+    #     pickle.dump(remarks, remarks_file, pickle.HIGHEST_PROTOCOL)
+
+    # with open(os.path.join("/home/ofek/", "remarks"), 'rb') as remarks_file:
+    #      remarks = pickle.load(remarks_file)
+
+    # assert (remarks == remarks1)
     max_hotness = max(entry[0] for entry in remarks)
 
     def merge_file_remarks(file_remarks_job, all_remarks, merged):

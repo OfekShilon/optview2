@@ -46,7 +46,7 @@ def suppress(remark):
     return False
 
 
-def render_file_source(source_dir, output_dir, filename, no_highlight, line_remarks):
+def render_file_source(source_dir, output_dir, filename, line_remarks):
     html_filename = os.path.join(output_dir, optrecord.html_file_name(filename))
     filename = filename if os.path.exists(filename) else os.path.join(source_dir, filename)
 
@@ -56,25 +56,22 @@ def render_file_source(source_dir, output_dir, filename, no_highlight, line_rema
     def render_source_lines(stream, line_remarks):
         file_text = stream.read()
 
-        if no_highlight:
-            html_highlighted = file_text
-        else:
-            html_highlighted = highlight(
+        html_highlighted = highlight(
             file_text,
-                cpp_lexer,
-                html_formatter)
+            cpp_lexer,
+            html_formatter)
 
-            # Note that the API is different between Python 2 and 3.  On
-            # Python 3, pygments.highlight() returns a bytes object, so we
-            # have to decode.  On Python 2, the output is str but since we
-            # support unicode characters and the output streams is unicode we
-            # decode too.
-            html_highlighted = html_highlighted.decode('utf-8')
+        # Note that the API is different between Python 2 and 3.  On
+        # Python 3, pygments.highlight() returns a bytes object, so we
+        # have to decode.  On Python 2, the output is str but since we
+        # support unicode characters and the output streams is unicode we
+        # decode too.
+        html_highlighted = html_highlighted.decode('utf-8')
 
-            # Take off the header and footer, these must be
-            #   reapplied line-wise, within the page structure
-            html_highlighted = html_highlighted.replace('<div class="highlight"><pre>', '')
-            html_highlighted = html_highlighted.replace('</pre></div>', '')
+        # Take off the header and footer, these must be
+        #   reapplied line-wise, within the page structure
+        html_highlighted = html_highlighted.replace('<div class="highlight"><pre>', '')
+        html_highlighted = html_highlighted.replace('</pre></div>', '')
 
         for (linenum, html_line) in enumerate(html_highlighted.split('\n'), start=1):
             yield [f'<a name="L{linenum}">{linenum}</a>', '', '', f'<div class="highlight"><pre>{html_line}</pre></div>', '']
@@ -278,11 +275,11 @@ $(document).ready(function() {{
 ''')
     return index_path
 
-def _render_file(source_dir, output_dir, ctx, no_highlight, entry, remark_filter, collect_all_remarks, remarks_src_dir):
+def _render_file(source_dir, output_dir, ctx, entry, remark_filter, collect_all_remarks, remarks_src_dir):
     global context
     context = ctx
     filename, remarks = entry
-    render_file_source(source_dir, output_dir, filename, no_highlight, remarks)
+    render_file_source(source_dir, output_dir, filename, remarks)
 
 
 def map_remarks(all_remarks):
@@ -304,16 +301,12 @@ def generate_report(all_remarks,
                     file_remarks,
                     source_dir,
                     output_dir,
-                    no_highlight,
                     should_display_hotness,
                     max_hottest_remarks_on_index,
-                    num_jobs,
-                    should_print_progress):
+                    num_jobs):
     pathlib.Path(output_dir).mkdir(parents=True, exist_ok=True)
 
-    if should_print_progress:
-        logging.info('Rendering index page...')
-
+    logging.info('Rendering index page...')
     logging.info(f"  {len(all_remarks):d} raw remarks")
     sorted_remarks = sorted(optrecord.itervalues(all_remarks), key=lambda r: (r.File, r.Line, r.Column, r.PassWithDiffPrefix))
     unique_lines_remarks = [sorted_remarks[0]]
@@ -335,24 +328,20 @@ def generate_report(all_remarks,
 
     index_path = render_index(output_dir, should_display_hotness, max_hottest_remarks_on_index, sorted_remarks)
 
-    if should_print_progress:
-        logging.info("Copying assets")
+    logging.info("Copying assets")
     assets_path = pathlib.Path(output_dir) / "assets"
     assets_path.mkdir(parents=True, exist_ok=True)
     for filename in glob.glob(os.path.join(str(pathlib.Path(os.path.realpath(__file__)).parent), "assets", '*.*')):
         shutil.copy(filename, assets_path)
 
-    _render_file_bound = functools.partial(_render_file, source_dir, output_dir, context, no_highlight)
-    if should_print_progress:
-        logging.info('Rendering HTML files...')
+    _render_file_bound = functools.partial(_render_file, source_dir, output_dir, context)
+    logging.info('Rendering HTML files...')
     optpmap.pmap(func=_render_file_bound,
                  iterable=file_remarks.items(),
                  processes=num_jobs,
-                 should_print_progress=should_print_progress,
                  remarks_src_dir=None)
 
-    if should_print_progress:
-        logging.info(f'Done - check the index page at file://{os.path.abspath(index_path)}')
+    logging.info(f'Done - check the index page at file://{os.path.abspath(index_path)}')
 
 def main():
     parser = argparse.ArgumentParser(description=desc)
@@ -379,23 +368,13 @@ def main():
         '-s',
         default='',
         help='set source directory')
-    parser.add_argument(
-        '--no-progress-indicator',
-        '-n',
-        action='store_true',
-        default=False,
-        help='Do not display any indicator of how many YAML files were read '
-             'or rendered into HTML.')
+
     parser.add_argument(
         '--max-hottest-remarks-on-index',
         default=1000,
         type=int,
         help='Maximum number of the hottest remarks to appear on the index page')
-    parser.add_argument(
-        '--no-highlight',
-        action='store_true',
-        default=False,
-        help='Do not use a syntax highlighter when rendering the source code')
+
     parser.add_argument(
         '--demangler',
         help='Set the demangler to be used (defaults to %s)' % optrecord.Remark.default_demangler)
@@ -420,7 +399,6 @@ def main():
     # Windows and non-Windows.
     args = parser.parse_args()
 
-    print_progress = not args.no_progress_indicator
     if args.demangler:
         optrecord.Remark.set_demangler(args.demangler)
 
@@ -437,7 +415,6 @@ def main():
 
     all_remarks, file_remarks, should_display_hotness = \
         optrecord.gather_results(filenames=files, num_jobs=args.jobs,
-                                 should_print_progress=print_progress,
                                  remark_filter=args.remark_filter,
                                  collect_all_remarks=args.collect_all_remarks,
                                  remarks_src_dir=remarks_src_dir)
@@ -448,11 +425,9 @@ def main():
                     file_remarks,
                     args.source_dir,
                     args.output_dir,
-                    args.no_highlight,
                     should_display_hotness,
                     args.max_hottest_remarks_on_index,
-                    args.jobs,
-                    print_progress)
+                    args.jobs)
     end_time = datetime.now()
     logging.info(f"Ran for {end_time-start_time}")
 

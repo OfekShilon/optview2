@@ -315,14 +315,12 @@ def get_remarks(input_file, remarks_src_dir, remark_filter=None, collect_all_rem
     return max_hotness, all_remarks, file_remarks
 
 
-def gather_results(filenames, num_jobs, should_print_progress,
-                   remarks_src_dir, remark_filter=None, collect_all_remarks=False):
-    if should_print_progress:
-        logging.warning('Reading YAML files...')
+def gather_results(filenames, num_jobs, remarks_src_dir, remark_filter=None, collect_all_remarks=False):
+    logging.warning('Reading YAML files...')
     if not Remark.demangler_proc:
         Remark.set_demangler(Remark.default_demangler)
     remarks = optpmap.pmap(
-        get_remarks, filenames, num_jobs, should_print_progress, remarks_src_dir, remark_filter, collect_all_remarks)
+        get_remarks, filenames, num_jobs, remarks_src_dir, remark_filter, collect_all_remarks)
 
 #TODO: pass output dir
     # with open(os.path.join("/home/ofek/", "remarks"), 'wb') as remarks_file:

@@ -30,15 +30,7 @@ if __name__ == '__main__':
         default=None,
         type=int,
         help='Max job count (defaults to %(default)s, the current CPU count)')
-    parser.add_argument(
-        '--no-progress-indicator',
-        '-n',
-        action='store_true',
-        default=False,
-        help='Do not display any indicator of how many YAML files were read.')
     args = parser.parse_args()
-
-    print_progress = not args.no_progress_indicator
 
     files = optrecord.find_opt_files(*args.yaml_dirs_or_files)
     if not files:
@@ -46,9 +38,8 @@ if __name__ == '__main__':
         sys.exit(1)
 
     all_remarks, file_remarks, _ = optrecord.gather_results(
-        files, args.jobs, print_progress)
-    if print_progress:
-        print('\n')
+        files, args.jobs)
+    print('\n')
 
     bypass = defaultdict(int)
     byname = defaultdict(int)

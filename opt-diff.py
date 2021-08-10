@@ -46,8 +46,8 @@ if __name__ == '__main__':
     files1 = optrecord.find_opt_files(args.yaml_dir_or_file_1)
     files2 = optrecord.find_opt_files(args.yaml_dir_or_file_2)
 
-    all_remarks1, _, _ = optrecord.gather_results(files1, args.jobs)
-    all_remarks2, _, _ = optrecord.gather_results(files2, args.jobs)
+    all_remarks1, _, _ = optrecord.gather_results(files1, args.jobs, remarks_src_dir=None)
+    all_remarks2, _, _ = optrecord.gather_results(files2, args.jobs, remarks_src_dir=None)
 
     added = set(all_remarks2.values()) - set(all_remarks1.values())
     removed = set(all_remarks1.values()) - set(all_remarks2.values())

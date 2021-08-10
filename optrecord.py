@@ -316,7 +316,7 @@ def get_remarks(input_file, remarks_src_dir, remark_filter=None, collect_all_rem
 
 
 def gather_results(filenames, num_jobs, remarks_src_dir, remark_filter=None, collect_all_remarks=False):
-    logging.warning('Reading YAML files...')
+    logging.info('Reading YAML files...')
     if not Remark.demangler_proc:
         Remark.set_demangler(Remark.default_demangler)
     remarks = optpmap.pmap(

@@ -41,8 +41,6 @@ def suppress(remark):
         return remark.getArgDict()['Function'][0].startswith('\"Swift.')
     elif remark.Name == 'sil.Inlined':
         return remark.getArgDict()['Callee'][0].startswith(('\"Swift.', '\"specialized Swift.'))
-    elif remark.Pass == 'inline':
-        return remark.message.startswith('istra::AssertHolder') or not remark.message.startswith('istra')
     return False
 
 
@@ -137,7 +135,6 @@ def render_file_source(source_dir, output_dir, filename, line_remarks):
 <link rel='stylesheet' type='text/css' href='https://cdn.datatables.net/1.10.25/css/jquery.dataTables.min.css'>
 <script src="https://code.jquery.com/jquery-3.5.1.js"></script>
 <script src="https://cdn.datatables.net/1.10.25/js/jquery.dataTables.min.js"></script>
-<script src="assets/colResizable-1.6.min.js"></script>
 </head>
 <body>
 <h1 class="filename-title">{os.path.abspath(filename)}</h1>
@@ -204,8 +201,6 @@ $(document).ready(function() {{
             $('body').scrollTop(parseInt(aTag.offset().top));
         }}
     }}
-
-    $("#opt_table_code").colResizable()
 }} );
 </script>
 </body>
@@ -319,7 +314,7 @@ def generate_report(all_remarks,
     logging.info("  {:d} unique source locations".format(len(unique_lines_remarks)))
 
     filtered_remarks = [r for r in unique_lines_remarks if not suppress(r)]
-    logging.info("  {:d} after filtering irrelevant".format(len(filtered_remarks)))
+    logging.info("  {:d} after suppressing irrelevant".format(len(filtered_remarks)))
 
     if should_display_hotness:
         sorted_remarks = sorted(filtered_remarks, key=lambda r: (r.Hotness, r.File, r.Line, r.Column, r.PassWithDiffPrefix, r.yaml_tag, r.Function), reverse=True)

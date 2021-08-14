@@ -16,7 +16,6 @@ except ImportError:
 
 import optrecord
 import argparse
-from collections import defaultdict
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=desc)

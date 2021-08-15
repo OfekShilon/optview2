@@ -303,6 +303,10 @@ def generate_report(all_remarks,
 
     logging.info('Rendering index page...')
     logging.info(f"  {len(all_remarks):d} raw remarks")
+    if len(all_remarks) == 0:
+        logging.warning("Not generating report!")
+        return
+        
     sorted_remarks = sorted(optrecord.itervalues(all_remarks), key=lambda r: (r.File, r.Line, r.Column, r.PassWithDiffPrefix))
     unique_lines_remarks = [sorted_remarks[0]]
     for rmk in sorted_remarks:

@@ -295,7 +295,7 @@ def get_remarks(input_file, remarks_src_dir, remark_filter=None, collect_all_rem
                 continue
 
             if remarks_src_dir is not None:
-                if not remark.File.startswith(".") and not remark.File.startswith(remarks_src_dir):
+                if not remark.File.startswith(".") and not os.path.abspath(remark.File).startswith(remarks_src_dir):
                     continue
 
             if remark_filter_e and not remark_filter_e.search(remark.Name):

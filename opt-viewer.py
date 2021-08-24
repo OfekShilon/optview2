@@ -118,9 +118,13 @@ def render_file_source(source_dir, output_dir, filename, line_remarks):
     <h1>Unable to locate file {filename}</h1>
 </html>''')
             return
-            
-        with open(filename, "r") as source_stream:
-            entries = list(render_source_lines(source_stream, line_remarks))
+
+        try:
+            with open(filename, "r") as source_stream:
+                entries = list(render_source_lines(source_stream, line_remarks))
+        except:
+            print(f"Failed to process file {filename}")
+            raise
 
         entries_summary = collections.Counter(e[2]['text'] for e in entries if isinstance(e[2], dict))
         entries_summary_li = '\n'.join(f"<li>{key}: {value}" for key, value in entries_summary.items())
@@ -410,7 +414,7 @@ def main():
 
     remarks_src_dir = None
     if not args.annotate_external:
-        remarks_src_dir = args.source_dir
+        remarks_src_dir = os.path.abspath(args.source_dir)
 
     all_remarks, file_remarks, should_display_hotness = \
         optrecord.gather_results(filenames=files, num_jobs=args.jobs,

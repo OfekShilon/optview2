@@ -238,7 +238,7 @@ def render_index(output_dir, should_display_hotness, max_hottest_remarks_on_inde
 <script src="https://code.jquery.com/jquery-3.5.1.js"></script>
 <script src="https://cdn.datatables.net/1.10.25/js/jquery.dataTables.min.js"></script>
 <script src="assets/colResizable-1.6.min.js"></script>
-<title>Optimize Viewer</title>
+<title>OptView2 Index</title>
 </head>
 <body>
 <div class="centered">

@@ -277,6 +277,7 @@ def get_remarks(input_file, remarks_src_dir, remark_filter=None, collect_all_rem
     max_hotness = 0
     all_remarks = dict()
     file_remarks = defaultdict(functools.partial(defaultdict, list))
+    #logging.debug(f"Parsing {input_file}")
 
     #TODO: filter unique name+file+line loc *here*
     with io.open(input_file, encoding = 'utf-8') as f:
@@ -319,10 +320,13 @@ def gather_results(filenames, num_jobs, remarks_src_dir, remark_filter=None, col
     logging.info('Reading YAML files...')
     if not Remark.demangler_proc:
         Remark.set_demangler(Remark.default_demangler)
-    remarks = optpmap.pmap(
-        get_remarks, filenames, num_jobs, remarks_src_dir, remark_filter, collect_all_remarks)
+    if num_jobs is None or num_jobs <= 1:
+        remarks = [get_remarks(f, remarks_src_dir, remark_filter, collect_all_remarks) for f in filenames]
+    else:
+        remarks = optpmap.pmap(
+            get_remarks, filenames, num_jobs, remarks_src_dir, remark_filter, collect_all_remarks)
 
-#TODO: pass output dir
+    #TODO: pass output dir
     # with open(os.path.join("/home/ofek/", "remarks"), 'wb') as remarks_file:
     #     pickle.dump(remarks, remarks_file, pickle.HIGHEST_PROTOCOL)
 

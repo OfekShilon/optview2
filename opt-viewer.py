@@ -226,6 +226,9 @@ def render_index(output_dir, should_display_hotness, max_hottest_remarks_on_inde
 
     entries = [render_entry(remark) for remark in all_remarks[:max_entries] if not suppress(remark)]
 
+    entries_summary = collections.Counter(e['description'] for e in entries)
+    entries_summary_li = '\n'.join(f"<li>{key}: {value}" for key, value in entries_summary.items())
+
     index_path = os.path.join(output_dir, 'index.html')
     with open(index_path, 'w', encoding='utf-8') as f:
         f.write(f'''
@@ -241,6 +244,10 @@ def render_index(output_dir, should_display_hotness, max_hottest_remarks_on_inde
 <title>OptView2 Index</title>
 </head>
 <body>
+<h3>Total of {len(entries_summary)} optimization issues</h3>
+<ul id='entries_summary'>
+{entries_summary_li}
+</ul>
 <div class="centered">
 <table id="opt_table" class="" width="100%"></table>
 </div>

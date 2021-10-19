@@ -19,6 +19,7 @@ from pygments.lexers.c_cpp import CppLexer
 from pygments.formatters import HtmlFormatter
 import optpmap
 import optrecord
+import config_parser
 import logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
@@ -404,10 +405,19 @@ def main():
         action='store_true',
         help='Annotate all files, including system headers')
 
+    parser.add_argument(
+        '--config-file',
+        help='Path to YAML config file')
+
     # Do not make this a global variable.  Values needed to be propagated through
     # to individual classes and functions to be portable with multiprocessing across
     # Windows and non-Windows.
     args = parser.parse_args()
+    if args.config_file:
+        with open(args.config_file, 'r') as config_file:
+            config = config_parser.parse(config_file)
+        parser.set_defaults(**config)
+        args = parser.parse_args()
 
     if args.demangler:
         optrecord.Remark.set_demangler(args.demangler)

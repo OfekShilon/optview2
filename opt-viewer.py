@@ -309,7 +309,8 @@ def generate_report(all_remarks,
                     output_dir,
                     should_display_hotness,
                     max_hottest_remarks_on_index,
-                    num_jobs):
+                    num_jobs,
+                    open_browser=True):
     pathlib.Path(output_dir).mkdir(parents=True, exist_ok=True)
 
     logging.info('Rendering index page...')
@@ -351,7 +352,14 @@ def generate_report(all_remarks,
                  processes=num_jobs,
                  remarks_src_dir=None)
 
-    logging.info(f'Done - check the index page at file://{os.path.abspath(index_path)}')
+    url_path = f'file://{os.path.abspath(index_path)}'
+    logging.info(f'Done - check the index page at {url_path}')
+    if open_browser:
+        try:
+            import webbrowser
+            webbrowser.open(url_path)
+        except:
+            pass
 
 def main():
     parser = argparse.ArgumentParser(description=desc)

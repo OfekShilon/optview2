@@ -1,27 +1,41 @@
 CC=clang++
 CXX=clang++
 RM=rm -f
-MKDIR=mkdir
-CPPFLAGS=-fsave-optimization-record -foptimization-record-file=./yaml_optimization_remarks/$(@:o=opt.yaml) -O3
+MKDIR_P=mkdir -p
+OBJS_DIR=objs
+DEPENDS_FILE=${OBJS_DIR}/.depend
+YAML_OUTPUT_DIR=yaml_optimization_remarks
+CPPFLAGS=-O3
 LDFLAGS=
 LDLIBS=
+BINARY_NAME=example
 
 SRCS=$(wildcard *.cc)
-OBJS=$(subst .cc,.o,$(SRCS))
+OBJS=$(addprefix $(OBJS_DIR)/,$(subst .cc,.o,$(SRCS)))
 
-all: another
+.PHONY: output_folder
 
-another: $(OBJS)
-	$(CXX) $(LDFLAGS) -o another $(OBJS) $(LDLIBS)
+all: output_folder ${BINARY_NAME}
 
-depend: .depend
+directories: ${YAML_OUTPUT_DIR} ${OBJS_DIR}
 
-.depend: $(SRCS)
-	$(RM) ./.depend
-	$(MKDIR) -p ./yaml_optimization_remarks
-	$(CXX) $(CPPFLAGS) -MM $^ >> ./.depend;
+${YAML_OUTPUT_DIR} ${OBJS_DIR}:
+	${MKDIR_P} $@
+
+${BINARY_NAME}: $(OBJS)
+	$(CXX) $(LDFLAGS) -o $(BINARY_NAME) $(OBJS) $(LDLIBS)
+
+${OBJS_DIR}/%.o : %.cc
+	$(CXX) -c $(CFLAGS) $(CPPFLAGS) -fsave-optimization-record -foptimization-record-file=./${YAML_OUTPUT_DIR}/$(patsubst %.o,%.opt.yaml,$(notdir $@)) $< -o $@
+
+depend: $(DEPENDS_FILE)
+
+$(DEPENDS_FILE): $(SRCS)
+	$(RM) $(DEPENDS_FILE)
+	$(MKDIR_P) ${YAML_OUTPUT_DIR} ${OBJS_DIR}
+	$(CXX) $(CPPFLAGS) -MM $^ >> $(DEPENDS_FILE)
 
 clean:
-	$(RM) $(OBJS) .depend *~ ./yaml_optimization_remarks/*
+	$(RM) -r ${YAML_OUTPUT_DIR} ${OBJS_DIR}
 
-include .depend
+include $(DEPENDS_FILE)

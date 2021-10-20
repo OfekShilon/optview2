@@ -310,7 +310,7 @@ def generate_report(all_remarks,
                     should_display_hotness,
                     max_hottest_remarks_on_index,
                     num_jobs,
-                    open_browser=True):
+                    open_browser=False):
     pathlib.Path(output_dir).mkdir(parents=True, exist_ok=True)
 
     logging.info('Rendering index page...')
@@ -381,6 +381,7 @@ def main():
         default=None,
         type=int,
         help='Max job count (defaults to %(default)s, the current CPU count)')
+
     parser.add_argument(
         '--source-dir',
         '-s',
@@ -412,6 +413,11 @@ def main():
         action='store_true',
         help='Annotate all files, including system headers')
 
+    parser.add_argument(
+        '--open-browser',
+        action='store_true',
+        help='Open browser after generating HTML files')
+
     # Do not make this a global variable.  Values needed to be propagated through
     # to individual classes and functions to be portable with multiprocessing across
     # Windows and non-Windows.
@@ -439,13 +445,14 @@ def main():
 
     map_remarks(all_remarks)
 
-    generate_report(all_remarks,
-                    file_remarks,
-                    args.source_dir,
-                    args.output_dir,
-                    should_display_hotness,
-                    args.max_hottest_remarks_on_index,
-                    args.jobs)
+    generate_report(all_remarks=all_remarks,
+                    file_remarks=file_remarks,
+                    source_dir=args.source_dir,
+                    output_dir=args.output_dir,
+                    should_display_hotness=should_display_hotness,
+                    max_hottest_remarks_on_index=args.max_hottest_remarks_on_index,
+                    num_jobs=args.jobs,
+                    open_browser=args.open_browser)
     end_time = datetime.now()
     logging.info(f"Ran for {end_time-start_time}")
 

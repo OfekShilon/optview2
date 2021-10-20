@@ -33,5 +33,8 @@ First, build your C/C++ project with Clang + `-fsave-optimization-record`. Note 
 ./optview2/opt-viewer.py -j10 --output-dir <> --source-dir <> <>
 ```
 
-
-
+### Example
+A dummy project with an optimization issue exists at `cpp_optimization_example`. To compile, generate HTML files and open browser, use the wrapper script:
+```
+./optview2/cpp_optimization_example/run_optview2.sh
+```

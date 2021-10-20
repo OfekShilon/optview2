@@ -7,5 +7,3 @@ make
 
 echo "Running optview2..."
 ../opt-viewer.py --open-browser --output-dir ./html_output --source-dir ./ ./yaml_optimization_remarks
-
-

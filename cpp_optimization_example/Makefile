@@ -2,7 +2,7 @@ CC=clang++
 CXX=clang++
 RM=rm -f
 MKDIR=mkdir
-CPPFLAGS=-fsave-optimization-record -foptimization-record-file=./yaml_optimization_remarks/$(@:o=opt.yaml)
+CPPFLAGS=-fsave-optimization-record -foptimization-record-file=./yaml_optimization_remarks/$(@:o=opt.yaml) -O3
 LDFLAGS=
 LDLIBS=
 
@@ -22,10 +22,6 @@ depend: .depend
 	$(CXX) $(CPPFLAGS) -MM $^ >> ./.depend;
 
 clean:
-	$(RM) $(OBJS)
-	$(RM) -r ./yaml_optimization_remarks
-
-distclean: clean
-	$(RM) *~ .depend
+	$(RM) $(OBJS) .depend *~ ./yaml_optimization_remarks/*
 
 include .depend

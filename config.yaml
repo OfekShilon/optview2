@@ -1,0 +1,17 @@
+## Opt view config
+
+# Set this to false to disable remark_filters list
+use_remark_filters: true
+# Only display optimization remarks with names matching filter regex
+remark_filters:
+  - nop
+  - bla
+
+# Collect all optimization remarks, not just failures
+collect_all_remakrs: False
+
+# Maximum number of the hottest remarks to appear on the index page
+max_hottest_remarks_on_index: 1000
+
+# Annotate all files, including system headers
+annotate_external: false

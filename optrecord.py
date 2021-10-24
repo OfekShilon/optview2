@@ -5,12 +5,11 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 
 import io
 import yaml
-import pickle
 
-# Try to use the C parser.
 import optrecord
 
 try:
+    # Try to use the C parser.
     from yaml import CLoader as Loader
 except ImportError:
     logging.warning("For faster parsing, you may want to install libYAML for PyYAML")

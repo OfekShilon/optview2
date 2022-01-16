@@ -143,7 +143,7 @@ def render_file_source(source_dir, output_dir, filename, line_remarks):
 </head>
 <body>
 <h1 class="filename-title">{os.path.abspath(filename)}</h1>
-<h3>Total of {len(entries_summary)} optimization issues</h3>
+<h3>{len(entries_summary)} issue types:</h3>
 <ul id='entries_summary'>
 {entries_summary_li}
 </ul>
@@ -245,7 +245,7 @@ def render_index(output_dir, should_display_hotness, max_hottest_remarks_on_inde
 <title>OptView2 Index</title>
 </head>
 <body>
-<h3>Total of {len(entries_summary)} optimization issues</h3>
+<h3>{len(entries_summary)} issue types:</h3>
 <ul id='entries_summary'>
 {entries_summary_li}
 </ul>
@@ -350,8 +350,7 @@ def generate_report(all_remarks,
     logging.info('Rendering HTML files...')
     optpmap.pmap(func=_render_file_bound,
                  iterable=file_remarks.items(),
-                 processes=num_jobs,
-                 remarks_src_dir=None)
+                 processes=num_jobs)
 
     url_path = f'file://{os.path.abspath(index_path)}'
     logging.info(f'Done - check the index page at {url_path}')
@@ -424,10 +423,16 @@ def main():
         action='store_true',
         help='Open browser after generating HTML files')
 
+    parser.add_argument(
+        '--split-top-folders',
+        action='store_true',
+        help='Operate separately on every top level subfolder containing opt files - to workaround out-of-memory crashes')
+
     # Do not make this a global variable.  Values needed to be propagated through
     # to individual classes and functions to be portable with multiprocessing across
     # Windows and non-Windows.
     args = parser.parse_args()
+
     if args.config_file:
         with open(args.config_file, 'r') as config_file:
             config = config_parser.parse(config_file)
@@ -437,33 +442,41 @@ def main():
     if args.demangler:
         optrecord.Remark.set_demangler(args.demangler)
 
-    files = optrecord.find_opt_files(*args.yaml_dirs_or_files)
-    if not files:
-        parser.error("No *.opt.yaml files found")
-        sys.exit(1)
-
     start_time = datetime.now()
 
-    remarks_src_dir = None
-    if not args.annotate_external:
-        remarks_src_dir = os.path.abspath(args.source_dir)
+    if not args.split_top_folders:
+        subfolders = [""]
+    else:
+        subfolders = []
+        for item in os.listdir(args.yaml_dirs_or_files[0]):
+            if os.path.isfile(os.path.join(args.yaml_dirs_or_files[0], item)):
+                continue
+            subfolders.append(item)
 
-    all_remarks, file_remarks, should_display_hotness = \
-        optrecord.gather_results(filenames=files, num_jobs=args.jobs,
-                                 remark_filter=args.remark_filter,
-                                 collect_all_remarks=args.collect_all_remarks,
-                                 remarks_src_dir=remarks_src_dir)
+    for subfolder in subfolders:
+        files = optrecord.find_opt_files(os.path.join(args.yaml_dirs_or_files[0], subfolder))
+        if not files:
+            continue
 
-    map_remarks(all_remarks)
+        logging.info(f"Processing subfolder {subfolder}")
 
-    generate_report(all_remarks=all_remarks,
+        all_remarks, file_remarks, should_display_hotness = \
+            optrecord.gather_results(filenames=files, num_jobs=args.jobs,
+                                     remark_filter=args.remark_filter,
+                                     collect_all_remarks=args.collect_all_remarks,
+                                     annotate_external=args.annotate_external)
+
+        map_remarks(all_remarks)
+
+        generate_report(all_remarks=all_remarks,
                     file_remarks=file_remarks,
                     source_dir=args.source_dir,
-                    output_dir=args.output_dir,
+                    output_dir=os.path.join(args.output_dir, subfolder),
                     should_display_hotness=should_display_hotness,
                     max_hottest_remarks_on_index=args.max_hottest_remarks_on_index,
                     num_jobs=args.jobs,
                     open_browser=args.open_browser)
+
     end_time = datetime.now()
     logging.info(f"Ran for {end_time-start_time}")
 

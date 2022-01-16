@@ -8,7 +8,7 @@ However, it was explicitly designed for use by compiler writers wishing to inves
 That adaptation never happened - hence the birth of optview2. We aim to make this wonderful optimization data accessible and _actionable_ by developers.
 
 ## Main changes
-1) Ignore system headers (all files outside the given source root)
+1) Ignore system headers,
 2) Collect only optimization _failures_, 
 3) Display in index.html only a single entry per type/source loc
 4) Replace ‘pass’ with ‘optimization name’
@@ -27,12 +27,19 @@ First, build your C/C++ project with Clang + `-fsave-optimization-record`. Note 
 ```
 ./optview2/opt-viewer.py --output-dir <HTMLs destination> --source-dir <source location> <YAMLs location>
 ```
-
+Note that `source-dir` needs to be the original root of the build with `-fsave-optimization-record`, even if you're interested only in part of the tree. Express this filter through the <YAML location>. 
 ### Parallelize to 10 jobs:
 ```
-./optview2/opt-viewer.py -j10 --output-dir <> --source-dir <> <>
+./optview2/opt-viewer.py -j10 --output-dir <...> --source-dir <...> <YAML dir>
 ```
 
+### Split top level folders:
+When working on large projects optview2's memory consumption easily gets out of hand. As a quick workaround, you can separate the work to build-subfolders (only first-level subfolders are supported).  For example:
+```
+./optview2/opt-viewer.py --split-top-level --output-dir <...> --source-dir <...> <YAMLs dir>
+```
+If, for example, the build dir includes subfolders "core", "utils" and "plugins" - the script would process them separately, and create 3 identically named subfolders under output-dir (with separate index files).
+If this doesn't work for you - you can also filter out comment types via remarks-filter.
 ### Example
 A dummy project with an optimization issue exists at `cpp_optimization_example`. To compile, generate HTML files and open browser, use the wrapper script:
 ```

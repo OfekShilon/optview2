@@ -5,6 +5,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 
 import io
 import yaml
+import pickle
 
 import optrecord
 
@@ -272,7 +273,7 @@ class Missed(Remark):
 class Failure(Missed):
     yaml_tag = '!Failure'
 
-def get_remarks(input_file, remarks_src_dir, remark_filter=None, collect_all_remarks=False):
+def get_remarks(input_file, remark_filter=None, collect_all_remarks=False, annotate_external=False):
     max_hotness = 0
     all_remarks = dict()
     file_remarks = defaultdict(functools.partial(defaultdict, list))
@@ -294,8 +295,8 @@ def get_remarks(input_file, remarks_src_dir, remark_filter=None, collect_all_rem
             if not collect_all_remarks and not (isinstance(remark, optrecord.Missed) | isinstance(remark, optrecord.Failure)):
                 continue
 
-            if remarks_src_dir is not None:
-                if not remark.File.startswith(".") and not os.path.abspath(remark.File).startswith(remarks_src_dir):
+            if not annotate_external:
+                if os.path.isabs(remark.File):
                     continue
 
             if remark_filter_e and not remark_filter_e.search(remark.Name):
@@ -315,22 +316,24 @@ def get_remarks(input_file, remarks_src_dir, remark_filter=None, collect_all_rem
     return max_hotness, all_remarks, file_remarks
 
 
-def gather_results(filenames, num_jobs, remarks_src_dir, remark_filter=None, collect_all_remarks=False):
+def gather_results(filenames, num_jobs, annotate_external=False, remark_filter=None, collect_all_remarks=False, load=False):
     logging.info('Reading YAML files...')
+    load = False
     if not Remark.demangler_proc:
         Remark.set_demangler(Remark.default_demangler)
-    if num_jobs is None or num_jobs <= 1:
-        remarks = [get_remarks(f, remarks_src_dir, remark_filter, collect_all_remarks) for f in filenames]
+    if not load:
+        if num_jobs is None or num_jobs <= 1:
+            remarks = [get_remarks(f,  remark_filter, collect_all_remarks, annotate_external) for f in filenames]
+        else:
+            remarks = optpmap.pmap(
+                get_remarks, filenames, num_jobs, remark_filter, collect_all_remarks, annotate_external)
+        #TODO: pass output dir
+        #logging.info("saving remarks")
+        #with open(os.path.join("/home/ofek/", "remarks"), 'wb') as remarks_file:
+        #    pickle.dump(remarks, remarks_file, pickle.HIGHEST_PROTOCOL)
     else:
-        remarks = optpmap.pmap(
-            get_remarks, filenames, num_jobs, remarks_src_dir, remark_filter, collect_all_remarks)
-
-    #TODO: pass output dir
-    # with open(os.path.join("/home/ofek/", "remarks"), 'wb') as remarks_file:
-    #     pickle.dump(remarks, remarks_file, pickle.HIGHEST_PROTOCOL)
-
-    # with open(os.path.join("/home/ofek/", "remarks"), 'rb') as remarks_file:
-    #      remarks = pickle.load(remarks_file)
+        with open(os.path.join("/home/ofek/", "remarks"), 'rb') as remarks_file:
+            remarks = pickle.load(remarks_file)
 
     # assert (remarks == remarks1)
     max_hotness = max(entry[0] for entry in remarks)

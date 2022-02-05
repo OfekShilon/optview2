@@ -1,4 +1,4 @@
-# optview2 - User-oriented fork of LLVM's opt-viewer
+# OptView2 - User-oriented fork of LLVM's opt-viewer
 
 Video Introduction: https://www.twitch.tv/videos/1267918755 - including example applications.
 

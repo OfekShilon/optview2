@@ -1,7 +1,9 @@
 # OptView2 - User-oriented fork of LLVM's opt-viewer
 
 ## Video Introduction 
-https://www.twitch.tv/videos/1268889367 
+https://www.youtube.com/watch?v=nVc439dnMTk
+
+The slides (with links) are avaiable at https://www.slideshare.net/ofekshilon/optview2-muc-meetup-slides .
 
 This is still the best way to start, as the talk includes example script outputs and recommendations on handling them. The text below still surveys only background and technical usage.
 

@@ -47,3 +47,4 @@ A dummy project with an optimization issue exists at `cpp_optimization_example`.
 ```
 ./optview2/cpp_optimization_example/run_optview2.sh
 ```
+Note to WSL users: you'd [probably need to manually open the resulting HTML](https://github.com/OfekShilon/optview2/issues/11).

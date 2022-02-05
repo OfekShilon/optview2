@@ -1,6 +1,9 @@
 # OptView2 - User-oriented fork of LLVM's opt-viewer
 
-Video Introduction: https://www.twitch.tv/videos/1267918755 - including example applications.
+# Video Introduction 
+https://www.twitch.tv/videos/1268889367 - including example applications.
+
+# Text version
 
 In the beginning there was the compiler switch [`-Rpass`](https://clang.llvm.org/docs/UsersManual.html#options-to-emit-optimization-reports), and it was good. Sorta. Clang users who wanted visibility into compiler optimization decisions could dump a wall of text and sift through it trying to make up what's important and what's actionable.
 Then, Adam Nemet et. al. added a compiler switch (`clang -fsave-optimization-record`) and the [opt-viewer python script](https://github.com/llvm/llvm-project/tree/main/llvm/tools/opt-viewer), as part of LLVM. He [presented it at the 2016 LLVM Developers’ Meeting](https://www.youtube.com/watch?v=qq0q1hfzidg), and lo it was good. Now users could generate and inspect HTMLs of their C/C++ sources, annotated with "optimization-remarks" in place. 

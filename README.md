@@ -55,7 +55,7 @@ Note that `<source-dir>` needs to be the original root of the build which includ
 #### Split top level folders:
 When working on large projects optview2's memory consumption easily gets out of hand. As a quick workaround, you can separate the work to build-subfolders (only first-level subfolders are supported).  For example:
 ```
-./optview2/opt-viewer.py --split-top-level --output-dir <...> --source-dir <...> <YAMLs dir>
+./optview2/opt-viewer.py --split-top-folders --output-dir <...> --source-dir <...> <YAMLs dir>
 ```
 If, for example, the build dir includes subfolders "core", "utils" and "plugins" - the script would process them separately, and create 3 identically named subfolders under output-dir (with separate index files).
 If this doesn't work for you - you can also filter out comment types via remarks-filter.

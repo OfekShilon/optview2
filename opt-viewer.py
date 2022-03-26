@@ -121,7 +121,7 @@ def render_file_source(source_dir, output_dir, filename, line_remarks):
             return
 
         try:
-            with open(filename, "r") as source_stream:
+            with open(filename, encoding="utf8", errors='ignore') as source_stream:
                 entries = list(render_source_lines(source_stream, line_remarks))
         except:
             print(f"Failed to process file {filename}")

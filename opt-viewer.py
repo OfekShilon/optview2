@@ -282,7 +282,8 @@ $(document).ready(function() {{
 ''')
     return index_path
 
-def _render_file(source_dir, output_dir, ctx, entry, remark_filter, collect_all_remarks, remarks_src_dir):
+# TODO: make pmap and _wrapped_func pack arguments, so these dummies won't be needed
+def _render_file(source_dir, output_dir, ctx, entry, exclude_names, exclude_text,  collect_opt_success, remarks_src_dir):
     global context
     context = ctx
     filename, remarks = entry
@@ -399,12 +400,17 @@ def main():
         help='Set the demangler to be used (defaults to %s)' % optrecord.Remark.default_demangler)
 
     parser.add_argument(
-        '--remark-filter',
+        '--exclude-name',
         default='',
-        help='Only display optimization remarks with names matching filter regex')
+        help='Omit optimization remarks with names matched by this regex')
 
     parser.add_argument(
-        '--collect-all-remarks',
+        '--exclude-text',
+        default='',
+        help='Omit optimization remarks with names matched by this regex')
+
+    parser.add_argument(
+        '--collect-opt-success',
         action='store_true',
         help='Collect all optimization remarks, not just failures')
 
@@ -412,11 +418,6 @@ def main():
         '--annotate-external',
         action='store_true',
         help='Annotate all files, including system headers')
-
-    parser.add_argument(
-         '--config-file',
-        action='store_true',
-       help='Path to YAML config file')
 
     parser.add_argument(
         '--open-browser',
@@ -431,51 +432,72 @@ def main():
     # Do not make this a global variable.  Values needed to be propagated through
     # to individual classes and functions to be portable with multiprocessing across
     # Windows and non-Windows.
+    cur_folder = pathlib.Path(__file__).parent.resolve()
+    conf_file = os.path.join(cur_folder, "config.yaml")
+    with open(conf_file, 'r') as config_file:
+        config = config_parser.parse(config_file)
+    parser.set_defaults(**config)
     args = parser.parse_args()
-
-    if args.config_file:
-        with open(args.config_file, 'r') as config_file:
-            config = config_parser.parse(config_file)
-        parser.set_defaults(**config)
-        args = parser.parse_args()
 
     if args.demangler:
         optrecord.Remark.set_demangler(args.demangler)
 
     start_time = datetime.now()
 
-    if not args.split_top_folders:
-        subfolders = [""]
-    else:
+    if args.split_top_folders:
         subfolders = []
         for item in os.listdir(args.yaml_dirs_or_files[0]):
             if os.path.isfile(os.path.join(args.yaml_dirs_or_files[0], item)):
                 continue
             subfolders.append(item)
 
-    for subfolder in subfolders:
-        files = optrecord.find_opt_files(os.path.join(args.yaml_dirs_or_files[0], subfolder))
-        if not files:
-            continue
+        for subfolder in subfolders:
+            files = optrecord.find_opt_files(os.path.join(args.yaml_dirs_or_files[0], subfolder))
+            if not files:
+                continue
 
-        logging.info(f"Processing subfolder {subfolder}")
+            logging.info(f"Processing subfolder {subfolder}")
+
+            all_remarks, file_remarks, should_display_hotness = \
+                optrecord.gather_results(filenames=files, num_jobs=args.jobs,
+                                         exclude_names=args.exclude_names,
+                                         exclude_text=args.exclude_text,
+                                         collect_opt_success=args.collect_opt_success,
+                                         annotate_external=args.annotate_external)
+
+            map_remarks(all_remarks)
+
+            generate_report(all_remarks=all_remarks,
+                        file_remarks=file_remarks,
+                        source_dir=args.source_dir,
+                        output_dir=os.path.join(args.output_dir, subfolder),
+                        should_display_hotness=should_display_hotness,
+                        max_hottest_remarks_on_index=args.max_hottest_remarks_on_index,
+                        num_jobs=args.jobs,
+                        open_browser=args.open_browser)
+    else: # not split_top_foders
+        files = optrecord.find_opt_files(os.path.join(*args.yaml_dirs_or_files))
+        if not files:
+            parser.error("No *.opt.yaml files found")
+            sys.exit(1)
 
         all_remarks, file_remarks, should_display_hotness = \
             optrecord.gather_results(filenames=files, num_jobs=args.jobs,
-                                     remark_filter=args.remark_filter,
-                                     collect_all_remarks=args.collect_all_remarks,
+                                     exclude_names=args.exclude_names,
+                                     exclude_text=args.exclude_text,
+                                     collect_opt_success=args.collect_opt_success,
                                      annotate_external=args.annotate_external)
 
         map_remarks(all_remarks)
 
         generate_report(all_remarks=all_remarks,
-                    file_remarks=file_remarks,
-                    source_dir=args.source_dir,
-                    output_dir=os.path.join(args.output_dir, subfolder),
-                    should_display_hotness=should_display_hotness,
-                    max_hottest_remarks_on_index=args.max_hottest_remarks_on_index,
-                    num_jobs=args.jobs,
-                    open_browser=args.open_browser)
+                        file_remarks=file_remarks,
+                        source_dir=args.source_dir,
+                        output_dir=args.output_dir,
+                        should_display_hotness=should_display_hotness,
+                        max_hottest_remarks_on_index=args.max_hottest_remarks_on_index,
+                        num_jobs=args.jobs,
+                        open_browser=args.open_browser)
 
     end_time = datetime.now()
     logging.info(f"Ran for {end_time-start_time}")

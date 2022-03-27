@@ -273,7 +273,7 @@ class Missed(Remark):
 class Failure(Missed):
     yaml_tag = '!Failure'
 
-def get_remarks(input_file, remark_filter=None, collect_all_remarks=False, annotate_external=False):
+def get_remarks(input_file, exclude_names=None, exclude_text = None, collect_opt_success=False, annotate_external=False):
     max_hotness = 0
     all_remarks = dict()
     file_remarks = defaultdict(functools.partial(defaultdict, list))
@@ -283,23 +283,29 @@ def get_remarks(input_file, remark_filter=None, collect_all_remarks=False, annot
     with io.open(input_file, encoding = 'utf-8') as f:
         docs = yaml.load_all(f, Loader=Loader)
 
-        remark_filter_e = None
-        if remark_filter:
-            remark_filter_e = re.compile(remark_filter)
+        exclude_text_e = None
+        if exclude_text:
+            exclude_text_e = re.compile(exclude_text)
+        exclude_names_e = None
+        if exclude_names:
+            exclude_names_e = re.compile(exclude_names)
         for remark in docs:
             remark.canonicalize()
             # Avoid remarks withoug debug location or if they are duplicated
             if not hasattr(remark, 'DebugLoc') or remark.key in all_remarks:
                 continue
 
-            if not collect_all_remarks and not (isinstance(remark, optrecord.Missed) | isinstance(remark, optrecord.Failure)):
+            if not collect_opt_success and not (isinstance(remark, optrecord.Missed) | isinstance(remark, optrecord.Failure)):
                 continue
 
             if not annotate_external:
                 if os.path.isabs(remark.File):
                     continue
 
-            if remark_filter_e and not remark_filter_e.search(remark.Name):
+            if exclude_names_e and exclude_names_e.search(remark.Name):
+                continue
+
+            if exclude_text_e and exclude_text_e.search(remark.message):
                 continue
 
             all_remarks[remark.key] = remark
@@ -316,17 +322,17 @@ def get_remarks(input_file, remark_filter=None, collect_all_remarks=False, annot
     return max_hotness, all_remarks, file_remarks
 
 
-def gather_results(filenames, num_jobs, annotate_external=False, remark_filter=None, collect_all_remarks=False, load=False):
+def gather_results(filenames, num_jobs, annotate_external=False, exclude_names=None, exclude_text=None, collect_opt_success=False):
     logging.info('Reading YAML files...')
     load = False
     if not Remark.demangler_proc:
         Remark.set_demangler(Remark.default_demangler)
     if not load:
         if num_jobs is None or num_jobs <= 1:
-            remarks = [get_remarks(f,  remark_filter, collect_all_remarks, annotate_external) for f in filenames]
+            remarks = [get_remarks(f,  exclude_names, exclude_text, collect_opt_success, annotate_external) for f in filenames]
         else:
             remarks = optpmap.pmap(
-                get_remarks, filenames, num_jobs, remark_filter, collect_all_remarks, annotate_external)
+                get_remarks, filenames, num_jobs, exclude_names, exclude_text, collect_opt_success, annotate_external)
         #TODO: pass output dir
         #logging.info("saving remarks")
         #with open(os.path.join("/home/ofek/", "remarks"), 'wb') as remarks_file:

@@ -3,7 +3,7 @@ import re
 
 def parse(f):
     "Parse config file"
-    # TODO - add scheme; currently we just take whatever there.
+    # TODO - add scheme; currently we just take whatever is there.
     config = yaml.safe_load(f)
     if config.get('use_remark_filters', True) and 'remark_filters' in config and len(config['remark_filters']) > 0:
         # config wants a single regex, transform to a single expression

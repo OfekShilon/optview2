@@ -75,9 +75,28 @@ def render_file_source(source_dir, output_dir, filename, line_remarks):
         for (linenum, html_line) in enumerate(html_highlighted.split('\n'), start=1):
             yield [f'<a name="L{linenum}">{linenum}</a>', '', '', f'<div class="highlight"><pre>{html_line}</pre></div>', '']
 
-            for remark in line_remarks.get(linenum, []):
-                if not suppress(remark):
-                    yield render_inline_remarks(remark, html_line)
+            cur_line_remarks = line_remarks.get(linenum, [])
+            from collections import defaultdict
+            d = defaultdict(list)
+            count_deleted = defaultdict(int)
+            for obj in cur_line_remarks:
+                if len(d[obj.Name]) < 5:
+                    d[obj.Name].append(obj)
+                else:
+                    count_deleted[obj.Name] += 1
+
+            for obj_name, remarks in d.items():
+                for remark in remarks:
+                    if not suppress(remark):
+                        yield render_inline_remarks(remark, html_line)
+                if count_deleted[obj_name] != 0:
+                    yield ['',
+                        0,
+                        {'class': f"column-entry-yellow", 'text': ''},
+                        {'class': 'column-entry-yellow', 'text': f'''<span " class="indent-span">&bull;...{count_deleted[obj_name]} similar remarks omitted.&nbsp;</span>'''},
+                        {'class': f"column-entry-yellow", 'text': ''},
+                        ]
+
 
     def render_inline_remarks(remark, line):
         inlining_context = remark.DemangledFunctionName
@@ -504,3 +523,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+

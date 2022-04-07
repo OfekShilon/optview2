@@ -2,9 +2,6 @@
 
 import argparse
 import functools
-import html
-import io
-from multiprocessing import cpu_count
 import os.path
 import re
 import shutil
@@ -36,13 +33,6 @@ class Context:
        self.caller_loc = caller_loc
 
 context = Context()
-
-def suppress(remark):
-    if remark.Name == 'sil.Specialized':
-        return remark.getArgDict()['Function'][0].startswith('\"Swift.')
-    elif remark.Name == 'sil.Inlined':
-        return remark.getArgDict()['Callee'][0].startswith(('\"Swift.', '\"specialized Swift.'))
-    return False
 
 
 def render_file_source(source_dir, output_dir, filename, line_remarks):
@@ -87,8 +77,7 @@ def render_file_source(source_dir, output_dir, filename, line_remarks):
 
             for obj_name, remarks in d.items():
                 for remark in remarks:
-                    if not suppress(remark):
-                        yield render_inline_remarks(remark, html_line)
+                    yield render_inline_remark(remark, html_line)
                 if count_deleted[obj_name] != 0:
                     yield ['',
                         0,
@@ -98,7 +87,7 @@ def render_file_source(source_dir, output_dir, filename, line_remarks):
                         ]
 
 
-    def render_inline_remarks(remark, line):
+    def render_inline_remark(remark, line):
         inlining_context = remark.DemangledFunctionName
         dl = context.caller_loc.get(remark.Function)
         if dl:
@@ -244,7 +233,7 @@ def render_index(output_dir, should_display_hotness, max_hottest_remarks_on_inde
     if should_display_hotness:
         max_entries = max_hottest_remarks_on_index
 
-    entries = [render_entry(remark) for remark in all_remarks[:max_entries] if not suppress(remark)]
+    entries = [render_entry(remark) for remark in all_remarks[:max_entries]]
 
     entries_summary = collections.Counter(e['description'] for e in entries)
     entries_summary_li = '\n'.join(f"<li>{key}: {value}" for key, value in entries_summary.items())
@@ -350,13 +339,10 @@ def generate_report(all_remarks,
             unique_lines_remarks.append(rmk)
     logging.info("  {:d} unique source locations".format(len(unique_lines_remarks)))
 
-    filtered_remarks = [r for r in unique_lines_remarks if not suppress(r)]
-    logging.info("  {:d} after suppressing irrelevant".format(len(filtered_remarks)))
-
     if should_display_hotness:
-        sorted_remarks = sorted(filtered_remarks, key=lambda r: (r.Hotness, r.File, r.Line, r.Column, r.PassWithDiffPrefix, r.yaml_tag, r.Function), reverse=True)
+        sorted_remarks = sorted(unique_lines_remarks, key=lambda r: (r.Hotness, r.File, r.Line, r.Column, r.PassWithDiffPrefix, r.yaml_tag, r.Function), reverse=True)
     else:
-        sorted_remarks = sorted(filtered_remarks, key=lambda r: (r.File, r.Line, r.Column, r.PassWithDiffPrefix, r.yaml_tag, r.Function))
+        sorted_remarks = sorted(unique_lines_remarks, key=lambda r: (r.File, r.Line, r.Column, r.PassWithDiffPrefix, r.yaml_tag, r.Function))
 
     index_path = render_index(output_dir, should_display_hotness, max_hottest_remarks_on_index, sorted_remarks)
 

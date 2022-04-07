@@ -230,7 +230,7 @@ $(document).ready(function() {{
 </html>
 ''')
 
-def render_index(output_dir, should_display_hotness, max_hottest_remarks_on_index, all_remarks):
+def render_index(output_dir, all_remarks):
     def render_entry(remark):
         return dict(description=remark.Name,
                     loc=f"<a href={remark.Link}>{remark.DebugLocString}</a>",
@@ -239,11 +239,7 @@ def render_index(output_dir, should_display_hotness, max_hottest_remarks_on_inde
                     relativeHotness=remark.RelativeHotness,
                     color=remark.color)
 
-    max_entries = None
-    if should_display_hotness:
-        max_entries = max_hottest_remarks_on_index
-
-    entries = [render_entry(remark) for remark in all_remarks[:max_entries]]
+    entries = [render_entry(remark) for remark in all_remarks]
 
     entries_summary = collections.Counter(e['description'] for e in entries)
     entries_summary_li = '\n'.join(f"<li>{key}: {value}" for key, value in entries_summary.items())
@@ -328,7 +324,6 @@ def generate_report(all_remarks,
                     source_dir,
                     output_dir,
                     should_display_hotness,
-                    max_hottest_remarks_on_index,
                     num_jobs=1,
                     open_browser=False):
     pathlib.Path(output_dir).mkdir(parents=True, exist_ok=True)
@@ -354,7 +349,7 @@ def generate_report(all_remarks,
     else:
         sorted_remarks = sorted(unique_lines_remarks, key=lambda r: (r.File, r.Line, r.Column, r.PassWithDiffPrefix, r.yaml_tag, r.Function))
 
-    index_path = render_index(output_dir, should_display_hotness, max_hottest_remarks_on_index, sorted_remarks)
+    index_path = render_index(output_dir, sorted_remarks)
 
     logging.info("Copying assets")
     assets_path = pathlib.Path(output_dir) / "assets"
@@ -403,12 +398,6 @@ def main():
         '-s',
         default='',
         help='set source directory')
-
-    parser.add_argument(
-        '--max-hottest-remarks-on-index',
-        default=1000,
-        type=int,
-        help='Maximum number of the hottest remarks to appear on the index page')
 
     parser.add_argument(
         '--demangler',
@@ -487,7 +476,6 @@ def main():
                         source_dir=args.source_dir,
                         output_dir=os.path.join(args.output_dir, subfolder),
                         should_display_hotness=should_display_hotness,
-                        max_hottest_remarks_on_index=args.max_hottest_remarks_on_index,
                         num_jobs=args.jobs,
                         open_browser=args.open_browser)
     else: # not split_top_foders
@@ -510,7 +498,6 @@ def main():
                         source_dir=args.source_dir,
                         output_dir=args.output_dir,
                         should_display_hotness=should_display_hotness,
-                        max_hottest_remarks_on_index=args.max_hottest_remarks_on_index,
                         num_jobs=args.jobs,
                         open_browser=args.open_browser)
 

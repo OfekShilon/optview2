@@ -78,7 +78,7 @@ def render_file_source(source_dir, output_dir, filename, line_remarks):
             for obj_name, remarks in d.items():
                 # render caret line, if all rendered remarks share a column
                 columns = [r.Column for r in remarks]
-                if all(c == columns[0] for c in columns) and columns[0] is not 0:
+                if all(c == columns[0] for c in columns) and columns[0] != 0:
                     yield ['',
                        0,
                        {'class': f"column-entry-yellow", 'text': ''},
@@ -329,7 +329,7 @@ def generate_report(all_remarks,
                     output_dir,
                     should_display_hotness,
                     max_hottest_remarks_on_index,
-                    num_jobs,
+                    num_jobs=1,
                     open_browser=False):
     pathlib.Path(output_dir).mkdir(parents=True, exist_ok=True)
 

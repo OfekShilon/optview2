@@ -328,10 +328,7 @@ def gather_results(filenames, num_jobs, annotate_external=False, exclude_names=N
     if not Remark.demangler_proc:
         Remark.set_demangler(Remark.default_demangler)
     if not load:
-        if num_jobs is None or num_jobs <= 1:
-            remarks = [get_remarks(f,  exclude_names, exclude_text, collect_opt_success, annotate_external) for f in filenames]
-        else:
-            remarks = optpmap.pmap(
+        remarks = optpmap.pmap(
                 get_remarks, filenames, num_jobs, exclude_names, exclude_text, collect_opt_success, annotate_external)
         #TODO: pass output dir
         #logging.info("saving remarks")

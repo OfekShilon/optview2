@@ -23,6 +23,10 @@ Hence the birth of OptView2. We aim to make this wonderful optimization data acc
 4) Replace ‘pass’ with ‘optimization name’,
 5) Make the index table sortable & resizable (Thanks [Ilan Ben-Hagai](https://github.com/supox))
 6) Use abridged func names.
+7) Create option to split processing into subfolders ('--split-top-folders') to enable processing of large projects
+8) Trim repeated remarks in source - keep only 5 per line.
+9) Enable filtering by remark name/text, preferrably via config file (but possible via command line too). Check `config.yaml` for some examples.
+
 
 ### Versioning
 I can't see any future potential compatibility considerations, and these are essentially just 5 python scripts and some html+javascript - so at this point there won't be any versioning or releases structure. Just download/clone and use - and please report any problems you come across.
@@ -59,9 +63,11 @@ When working on large projects optview2's memory consumption easily gets out of 
 ```
 If, for example, the build dir includes subfolders "core", "utils" and "plugins" - the script would process them separately, and create 3 identically named subfolders under output-dir (with separate index files).
 If this doesn't work for you - you can also filter out comment types via remarks-filter.
-#### Sample project
+#### Sample projects
 A dummy project with a few optimization issues is placed under `cpp_optimization_example`. To compile, generate HTML files and open in browser, use the wrapper script:
 ```
 ./optview2/cpp_optimization_example/run_optview2.sh
 ```
 Note to WSL users: you'd [probably need to manually open the resulting HTML](https://github.com/OfekShilon/optview2/issues/11).
+
+Two real life projects were analyzed and the results pushed online - check [CPython](https://ofekshilon.github.io/optview2-cpython/) and [OpenCV](https://ofekshilon.github.io/optview2-opencv/) pages.

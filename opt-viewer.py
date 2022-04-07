@@ -141,7 +141,7 @@ def render_file_source(source_dir, output_dir, filename, line_remarks):
         try:
             with open(filename, encoding="utf8", errors='ignore') as source_stream:
                 entries = list(render_source_lines(source_stream, line_remarks))
-        except:
+        except Exception:
             print(f"Failed to process file {filename}")
             raise
 
@@ -369,7 +369,7 @@ def generate_report(all_remarks,
         try:
             import webbrowser
             webbrowser.open(url_path)
-        except:
+        except Exception:
             pass
 
 def main():

@@ -5,7 +5,7 @@
 use_remark_filters: true
 
 # Exclude optimization remarks with names matching this regex:
-exclude_names: NeverInline|NotPossible
+exclude_names: NeverInline|NotPossible|LoopSpillReloadCopies
 # Exclude optimization remarks with text matching this regex:
 exclude_text: ^std\:\:|^__dynamic_cast|^operator new|^operator delete|^__cxa|^__clang
 

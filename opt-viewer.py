@@ -76,13 +76,23 @@ def render_file_source(source_dir, output_dir, filename, line_remarks):
                     count_deleted[obj.Name] += 1
 
             for obj_name, remarks in d.items():
+                # render caret line, if all rendered remarks share a column
+                columns = [r.Column for r in remarks]
+                if all(c == columns[0] for c in columns) and columns[0] is not 0:
+                    yield ['',
+                       0,
+                       {'class': f"column-entry-yellow", 'text': ''},
+                       {'class': 'column-entry-yellow',
+                        'text': f'''<span " class="indent-span">{"&nbsp"*(columns[0]-1) + '^'}&nbsp;</span>'''},
+                       {'class': f"column-entry-yellow", 'text': ''},
+                       ]
                 for remark in remarks:
                     yield render_inline_remark(remark, html_line)
                 if count_deleted[obj_name] != 0:
                     yield ['',
                         0,
                         {'class': f"column-entry-yellow", 'text': ''},
-                        {'class': 'column-entry-yellow', 'text': f'''<span " class="indent-span">&bull;...{count_deleted[obj_name]} similar remarks omitted.&nbsp;</span>'''},
+                        {'class': 'column-entry-yellow', 'text': f'''<span " class="indent-span">...{count_deleted[obj_name]} similar remarks omitted.&nbsp;</span>'''},
                         {'class': f"column-entry-yellow", 'text': ''},
                         ]
 

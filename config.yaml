@@ -10,9 +10,9 @@ use_remark_filters: true
 # NotBeneficial, SpillReloadCopies, NotPossible, NoDefinition, NeverInline, UnsupportedIrreducibleCFG,
 # VectorizationNotBeneficial, LoadWithLoopInvariantAddressCondExecuted, HorSLPNotBeneficial, TooCostly
 # LoopMayAccessStore
-exclude_names: NeverInline|NotPossible|LoopSpillReloadCopies
+exclude_names: NeverInline|NotPossible|LoopSpillReloadCopies|SpillReloadCopies
 # Exclude optimization remarks with text matching this regex:
-exclude_text: ^std\:\:|^__dynamic_cast|^operator new|^operator delete|^__cxa|^__clang
+exclude_text: ^std\:\:|^__dynamic_cast|^operator new|^operator delete|^__cxa|^__clang|^__cxx
 
 # Collect all optimization remarks, not just failures
 collect_opt_success: False

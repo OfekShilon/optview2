@@ -145,9 +145,6 @@ def render_file_source(source_dir, output_dir, filename, line_remarks):
             print(f"Failed to process file {filename}")
             raise
 
-        entries_summary = collections.Counter(e[2]['text'] for e in entries if isinstance(e[2], dict))
-        entries_summary_li = '\n'.join(f"<li>{key}: {value}" for key, value in entries_summary.items())
-
         f.write(f'''
 <html>
 <meta charset="utf-8" />
@@ -161,10 +158,6 @@ def render_file_source(source_dir, output_dir, filename, line_remarks):
 </head>
 <body>
 <h1 class="filename-title">{os.path.abspath(filename)}</h1>
-<h3>{len(entries_summary)} issue types:</h3>
-<ul id='entries_summary'>
-{entries_summary_li}
-</ul>
 <p><a class='back' href='index.html'>Back</a></p>
 <table id="opt_table_code" class="" width="100%"></table>
 <p><a class='back' href='index.html'>Back</a></p>

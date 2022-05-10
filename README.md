@@ -5,7 +5,7 @@ https://www.youtube.com/watch?v=nVc439dnMTk
 
 The slides (with links) are avaiable at https://www.slideshare.net/ofekshilon/optview2-muc-meetup-slides .
 
-This is still the best way to start, as the talk includes example script outputs and recommendations on handling them. The text below still surveys only background and technical usage.
+This is still the best way to start, as the talk includes example script outputs and recommendations on handling them. The text below surveys background and technical usage.
 
 ## Text Introduction
 

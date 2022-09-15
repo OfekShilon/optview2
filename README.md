@@ -1,9 +1,9 @@
 # OptView2 - User-oriented fork of LLVM's opt-viewer
 
 ## Video Introduction 
-https://www.youtube.com/watch?v=nVc439dnMTk
+https://www.youtube.com/watch?v=6HbyacS5eZQ&t=585s
 
-The slides (with links) are avaiable at https://www.slideshare.net/ofekshilon/optview2-muc-meetup-slides .
+The slides (with links) are avaiable at https://www.slideshare.net/ofekshilon/optview2-c-on-sea-2022 .
 
 This is still the best way to start, as the talk includes example script outputs and recommendations on handling them. The text below surveys background and technical usage.
 
@@ -35,7 +35,7 @@ I can't see any future potential compatibility considerations, and these are ess
 It is not uncommon for an analysis of a ~1000 file project to take an hour or more. Two things can help mitigate the burden:
  1) The `-j[N]` command line switch to opt-viewer.py controls the number of jobs to spawn for YAML processing. A rule of thumb that worked best for my PC was to set `N` to 1.5 times the number of physical cores (for an 8 core machine, set tot 12), but there's no real alternative to experimentation. By default the number of jobs invoked equals the number of logical cores.
  2) The script uses the python package PyYaml - which uses the C++ package libyaml if available, and if not - falls back to a much, much slower python implementation. In such a case you'd see this line in the script output:
- 3) For faster parsing, you may want to install libyaml for PyYAL
+> For faster parsing, you may want to install libyaml for PyYAL
 
   One way to install and use libyaml is:
   ```

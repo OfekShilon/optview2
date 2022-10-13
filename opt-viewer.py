@@ -152,9 +152,9 @@ def render_file_source(source_dir, output_dir, filename, line_remarks):
 <title>{os.path.basename(filename)}</title>
 <link rel="icon" type="image/png" href="assets/favicon.ico"/>
 <link rel='stylesheet' type='text/css' href='assets/style.css'>
-<link rel='stylesheet' type='text/css' href='https://cdn.datatables.net/1.10.25/css/jquery.dataTables.min.css'>
-<script src="https://code.jquery.com/jquery-3.5.1.js"></script>
-<script src="https://cdn.datatables.net/1.10.25/js/jquery.dataTables.min.js"></script>
+<link rel='stylesheet' type='text/css' href='assets/jquery.dataTables.min.css'>
+<script src="assets/jquery-3.5.1.js"></script>
+<script src="assets/jquery.dataTables.min.js"></script>
 </head>
 <body>
 <h1 class="filename-title">{os.path.abspath(filename)}</h1>

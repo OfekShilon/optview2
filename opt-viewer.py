@@ -245,9 +245,9 @@ def render_index(output_dir, all_remarks):
 <head>
 <link rel="icon" type="image/png" href="assets/favicon.ico"/>
 <link rel='stylesheet' type='text/css' href='assets/style.css'>
-<link rel='stylesheet' type='text/css' href='https://cdn.datatables.net/1.10.25/css/jquery.dataTables.min.css'>
-<script src="https://code.jquery.com/jquery-3.5.1.js"></script>
-<script src="https://cdn.datatables.net/1.10.25/js/jquery.dataTables.min.js"></script>
+<link rel='stylesheet' type='text/css' href='assets/jquery.dataTables.min.css'>
+<script src="assets/jquery-3.5.1.js"></script>
+<script src="assets/jquery.dataTables.min.js"></script>
 <script src="assets/colResizable-1.6.min.js"></script>
 <title>OptView2 Index</title>
 </head>

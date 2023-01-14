@@ -290,7 +290,7 @@ $(document).ready(function() {{
     return index_path
 
 # TODO: make pmap and _wrapped_func pack arguments, so these dummies won't be needed
-def _render_file(source_dir, output_dir, ctx, entry, exclude_names, exclude_text,  collect_opt_success, remarks_src_dir):
+def _render_file(output_dir, ctx, entry, source_dir, exclude_names, exclude_text,  collect_opt_success, remarks_src_dir):
     global context
     context = ctx
     filename, remarks = entry
@@ -350,11 +350,12 @@ def generate_report(all_remarks,
     for filename in glob.glob(os.path.join(str(pathlib.Path(os.path.realpath(__file__)).parent), "assets", '*.*')):
         shutil.copy(filename, assets_path)
 
-    _render_file_bound = functools.partial(_render_file, source_dir, output_dir, context)
+    _render_file_bound = functools.partial(_render_file, output_dir, context)
     logging.info('Rendering HTML files...')
     optpmap.pmap(func=_render_file_bound,
                  iterable=file_remarks.items(),
-                 processes=num_jobs)
+                 processes=num_jobs,
+                 source_dir=source_dir)
 
     url_path = f'file://{os.path.abspath(index_path)}'
     logging.info(f'Done - check the index page at {url_path}')
@@ -389,7 +390,7 @@ def main():
     parser.add_argument(
         '--source-dir',
         '-s',
-        default='',
+        default=os.path.abspath(os.path.curdir),
         help='set source directory')
 
     parser.add_argument(
@@ -457,6 +458,7 @@ def main():
 
             all_remarks, file_remarks, should_display_hotness = \
                 optrecord.gather_results(filenames=files, num_jobs=args.jobs,
+                                         source_dir=args.source_dir,
                                          exclude_names=args.exclude_names,
                                          exclude_text=args.exclude_text,
                                          collect_opt_success=args.collect_opt_success,
@@ -467,7 +469,7 @@ def main():
             generate_report(all_remarks=all_remarks,
                         file_remarks=file_remarks,
                         source_dir=args.source_dir,
-                        output_dir=os.path.join(args.output_dir, subfolder),
+                        output_dir=os.path.abspath(os.path.join(args.output_dir, subfolder)),
                         should_display_hotness=should_display_hotness,
                         num_jobs=args.jobs,
                         open_browser=args.open_browser)
@@ -479,6 +481,7 @@ def main():
 
         all_remarks, file_remarks, should_display_hotness = \
             optrecord.gather_results(filenames=files, num_jobs=args.jobs,
+                                     source_dir=args.source_dir,
                                      exclude_names=args.exclude_names,
                                      exclude_text=args.exclude_text,
                                      collect_opt_success=args.collect_opt_success,
@@ -489,7 +492,7 @@ def main():
         generate_report(all_remarks=all_remarks,
                         file_remarks=file_remarks,
                         source_dir=args.source_dir,
-                        output_dir=args.output_dir,
+                        output_dir=os.path.abspath(args.output_dir),
                         should_display_hotness=should_display_hotness,
                         num_jobs=args.jobs,
                         open_browser=args.open_browser)

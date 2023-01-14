@@ -23,6 +23,7 @@ import functools
 from multiprocessing import Lock
 import os, os.path
 import subprocess
+import pathlib
 try:
     # The previously builtin function `intern()` was moved
     # to the `sys` module in Python 3.
@@ -51,7 +52,7 @@ else:
 
 
 def html_file_name(filename):
-    return filename.replace('/', '_').replace('#', '_') + ".html"
+    return filename.replace('/', '_').replace('#', '_').replace(':', '_') + ".html"
 
 
 def make_link(File, Line):
@@ -62,12 +63,13 @@ class Remark(yaml.YAMLObject):
     # Work-around for http://pyyaml.org/ticket/154.
     yaml_loader = Loader
 
-    default_demangler = 'c++filt -n -p'
+    default_demangler = 'llvm-cxxfilt -n -t'
     demangler_proc = None
 
     @classmethod
     def set_demangler(cls, demangler):
-        cls.demangler_proc = subprocess.Popen(demangler.split(), stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+        cls.demangler_proc = subprocess.Popen(
+            demangler.split(), stdin=subprocess.PIPE, stdout=subprocess.PIPE)
         cls.demangler_lock = Lock()
 
     @classmethod
@@ -273,7 +275,7 @@ class Missed(Remark):
 class Failure(Missed):
     yaml_tag = '!Failure'
 
-def get_remarks(input_file, exclude_names=None, exclude_text = None, collect_opt_success=False, annotate_external=False):
+def get_remarks(input_file, source_dir, exclude_names=None, exclude_text = None, collect_opt_success=False, annotate_external=False):
     max_hotness = 0
     all_remarks = dict()
     file_remarks = defaultdict(functools.partial(defaultdict, list))
@@ -298,9 +300,8 @@ def get_remarks(input_file, exclude_names=None, exclude_text = None, collect_opt
             if not collect_opt_success and not (isinstance(remark, optrecord.Missed) | isinstance(remark, optrecord.Failure)):
                 continue
 
-            if not annotate_external:
-                if os.path.isabs(remark.File):
-                    continue
+            if not annotate_external and pathlib.Path(remark.File).is_absolute() and not pathlib.PurePath(remark.File).is_relative_to(pathlib.Path(source_dir)):
+                continue
 
             if exclude_names_e and exclude_names_e.search(remark.Name):
                 continue
@@ -322,14 +323,14 @@ def get_remarks(input_file, exclude_names=None, exclude_text = None, collect_opt
     return max_hotness, all_remarks, file_remarks
 
 
-def gather_results(filenames, num_jobs, annotate_external=False, exclude_names=None, exclude_text=None, collect_opt_success=False):
+def gather_results(filenames, num_jobs, source_dir, annotate_external=False, exclude_names=None, exclude_text=None, collect_opt_success=False):
     logging.info('Reading YAML files...')
     load = False
     if not Remark.demangler_proc:
         Remark.set_demangler(Remark.default_demangler)
     if not load:
         remarks = optpmap.pmap(
-                get_remarks, filenames, num_jobs, exclude_names, exclude_text, collect_opt_success, annotate_external)
+            get_remarks, filenames, num_jobs, source_dir, exclude_names, exclude_text, collect_opt_success, annotate_external)
         #TODO: pass output dir
         #logging.info("saving remarks")
         #with open(os.path.join("/home/ofek/", "remarks"), 'wb') as remarks_file:

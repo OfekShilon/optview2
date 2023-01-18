@@ -51,12 +51,21 @@ else:
 
 
 def html_file_name(filename):
-    return filename.replace('/', '_').replace('#', '_') + ".html"
+    replace_targets = ['/', '#', ':', '\\']
+    new_name = filename
+    for target in replace_targets:
+        new_name = new_name.replace(target, '_')
+    return new_name + ".html"
 
 
 def make_link(File, Line):
     return "\"{}#L{}\"".format(html_file_name(File), Line)
 
+class EmptyLock(object):
+    def __enter__(self):
+        return True
+    def __exit__(self, *args):
+        pass
 
 class Remark(yaml.YAMLObject):
     # Work-around for http://pyyaml.org/ticket/154.
@@ -66,12 +75,23 @@ class Remark(yaml.YAMLObject):
     demangler_proc = None
 
     @classmethod
-    def set_demangler(cls, demangler):
+    def set_base_demangler(cls, demangler):
         cls.demangler_proc = subprocess.Popen(demangler.split(), stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+
+    @classmethod
+    def set_demangler(cls, demangler):
+        cls.set_base_demangler(demangler)
         cls.demangler_lock = Lock()
 
     @classmethod
+    def set_demangler_no_lock(cls, demangler):
+        cls.set_base_demangler(demangler)
+        cls.demangler_lock = EmptyLock()#on windows we spawn demangler for each process anyway, Lock is not needed
+
+    @classmethod
     def demangle(cls, name):
+        if not cls.demangler_proc:
+            cls.set_demangler_no_lock(cls.default_demangler)
         with cls.demangler_lock:
             cls.demangler_proc.stdin.write((name + '\n').encode('utf-8'))
             cls.demangler_proc.stdin.flush()

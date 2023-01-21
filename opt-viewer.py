@@ -290,7 +290,7 @@ $(document).ready(function() {{
     return index_path
 
 # TODO: make pmap and _wrapped_func pack arguments, so these dummies won't be needed
-def _render_file(source_dir, output_dir, ctx, entry, exclude_names, exclude_text,  collect_opt_success, remarks_src_dir):
+def _render_file(source_dir, output_dir, ctx, entry, dummy5=None, dummy6=None, dummy7=None, dummy8=None, dummy9=None):
     global context
     context = ctx
     filename, remarks = entry
@@ -460,7 +460,8 @@ def main():
                                          exclude_names=args.exclude_names,
                                          exclude_text=args.exclude_text,
                                          collect_opt_success=args.collect_opt_success,
-                                         annotate_external=args.annotate_external)
+                                         annotate_external=args.annotate_external,
+                                         source_dir=args.source_dir)
 
             map_remarks(all_remarks)
 
@@ -482,7 +483,8 @@ def main():
                                      exclude_names=args.exclude_names,
                                      exclude_text=args.exclude_text,
                                      collect_opt_success=args.collect_opt_success,
-                                     annotate_external=args.annotate_external)
+                                     annotate_external=args.annotate_external,
+                                     source_dir=args.source_dir)
 
         map_remarks(all_remarks)
 

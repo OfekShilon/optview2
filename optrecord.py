@@ -132,7 +132,7 @@ class Remark(yaml.YAMLObject):
 
     @property
     def File(self):
-        return self.DebugLoc['File']
+        return os.path.abspath(self.DebugLoc['File'])
 
     @property
     def Line(self):
@@ -273,7 +273,8 @@ class Missed(Remark):
 class Failure(Missed):
     yaml_tag = '!Failure'
 
-def get_remarks(input_file, exclude_names=None, exclude_text = None, collect_opt_success=False, annotate_external=False):
+def get_remarks(input_file, exclude_names=None, exclude_text = None, collect_opt_success=False, 
+                annotate_external=False, source_dir=None):
     max_hotness = 0
     all_remarks = dict()
     file_remarks = defaultdict(functools.partial(defaultdict, list))
@@ -299,7 +300,7 @@ def get_remarks(input_file, exclude_names=None, exclude_text = None, collect_opt
                 continue
 
             if not annotate_external:
-                if os.path.isabs(remark.File):
+                if not remark.File.startswith(source_dir):
                     continue
 
             if exclude_names_e and exclude_names_e.search(remark.Name):
@@ -322,14 +323,16 @@ def get_remarks(input_file, exclude_names=None, exclude_text = None, collect_opt
     return max_hotness, all_remarks, file_remarks
 
 
-def gather_results(filenames, num_jobs, annotate_external=False, exclude_names=None, exclude_text=None, collect_opt_success=False):
+def gather_results(filenames, num_jobs, exclude_names=None, exclude_text=None, collect_opt_success=False,
+                    annotate_external=False, source_dir=None):
     logging.info('Reading YAML files...')
     load = False
     if not Remark.demangler_proc:
         Remark.set_demangler(Remark.default_demangler)
     if not load:
         remarks = optpmap.pmap(
-                get_remarks, filenames, num_jobs, exclude_names, exclude_text, collect_opt_success, annotate_external)
+                get_remarks, filenames, num_jobs, exclude_names, exclude_text, collect_opt_success, 
+                annotate_external, source_dir)
         #TODO: pass output dir
         #logging.info("saving remarks")
         #with open(os.path.join("/home/ofek/", "remarks"), 'wb') as remarks_file:

@@ -436,6 +436,8 @@ def main():
     parser.set_defaults(**config)
     args = parser.parse_args()
 
+    source_dir = os.path.abspath(args.source_dir)
+
     if args.demangler:
         optrecord.Remark.set_demangler(args.demangler)
 
@@ -461,13 +463,13 @@ def main():
                                          exclude_text=args.exclude_text,
                                          collect_opt_success=args.collect_opt_success,
                                          annotate_external=args.annotate_external,
-                                         source_dir=args.source_dir)
+                                         source_dir=source_dir)
 
             map_remarks(all_remarks)
 
             generate_report(all_remarks=all_remarks,
                         file_remarks=file_remarks,
-                        source_dir=args.source_dir,
+                        source_dir=source_dir,
                         output_dir=os.path.join(args.output_dir, subfolder),
                         should_display_hotness=should_display_hotness,
                         num_jobs=args.jobs,
@@ -484,13 +486,13 @@ def main():
                                      exclude_text=args.exclude_text,
                                      collect_opt_success=args.collect_opt_success,
                                      annotate_external=args.annotate_external,
-                                     source_dir=args.source_dir)
+                                     source_dir=source_dir)
 
         map_remarks(all_remarks)
 
         generate_report(all_remarks=all_remarks,
                         file_remarks=file_remarks,
-                        source_dir=args.source_dir,
+                        source_dir=source_dir,
                         output_dir=args.output_dir,
                         should_display_hotness=should_display_hotness,
                         num_jobs=args.jobs,

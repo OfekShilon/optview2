@@ -65,9 +65,9 @@ class Remark(yaml.YAMLObject):
     default_demangler = 'c++filt -n -p'
     demangler_proc = None
 
-    @classmethod
-    def find_demangler(cls):
-        
+#    @classmethod
+#    def find_demangler(cls):
+
 
     @classmethod
     def set_demangler(cls, demangler):

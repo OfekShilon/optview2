@@ -66,6 +66,10 @@ class Remark(yaml.YAMLObject):
     demangler_proc = None
 
     @classmethod
+    def find_demangler(cls):
+        
+
+    @classmethod
     def set_demangler(cls, demangler):
         cls.demangler_proc = subprocess.Popen(demangler.split(), stdin=subprocess.PIPE, stdout=subprocess.PIPE)
         cls.demangler_lock = Lock()

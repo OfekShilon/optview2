@@ -324,7 +324,7 @@ def generate_report(all_remarks,
     logging.info('Rendering index page...')
     logging.info(f"  {len(all_remarks):d} raw remarks")
     if len(all_remarks) == 0:
-        logging.warning("Not generating report!")
+        logging.warning("Not generating report! Please verify your --source-dir argument is exactly the path from which the compiler was invoked.")
         return
         
     sorted_remarks = sorted(optrecord.itervalues(all_remarks), key=lambda r: (r.File, r.Line, r.Column, r.PassWithDiffPrefix))

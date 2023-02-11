@@ -361,7 +361,10 @@ def generate_report(all_remarks,
     if open_browser:
         try:
             import webbrowser
-            webbrowser.open(url_path)
+            if webbrowser.get("wslview %s") == None:
+                webbrowser.open(url_path)
+            else:
+                webbrowser.get("wslview %s").open(url_path)
         except Exception:
             pass
 

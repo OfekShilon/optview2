@@ -326,22 +326,12 @@ def get_remarks(input_file, exclude_names=None, exclude_text = None, collect_opt
 def gather_results(filenames, num_jobs, exclude_names=None, exclude_text=None, collect_opt_success=False,
                     annotate_external=False, source_dir=None):
     logging.info('Reading YAML files...')
-    load = False
     if not Remark.demangler_proc:
         Remark.set_demangler(Remark.default_demangler)
-    if not load:
-        remarks = optpmap.pmap(
-                get_remarks, filenames, num_jobs, exclude_names, exclude_text, collect_opt_success, 
-                annotate_external, source_dir)
-        #TODO: pass output dir
-        #logging.info("saving remarks")
-        #with open(os.path.join("/home/ofek/", "remarks"), 'wb') as remarks_file:
-        #    pickle.dump(remarks, remarks_file, pickle.HIGHEST_PROTOCOL)
-    else:
-        with open(os.path.join("/home/ofek/", "remarks"), 'rb') as remarks_file:
-            remarks = pickle.load(remarks_file)
+    remarks = optpmap.pmap(
+            get_remarks, filenames, num_jobs, exclude_names, exclude_text, collect_opt_success, 
+            annotate_external, source_dir)
 
-    # assert (remarks == remarks1)
     max_hotness = max(entry[0] for entry in remarks)
 
     def merge_file_remarks(file_remarks_job, all_remarks, merged):

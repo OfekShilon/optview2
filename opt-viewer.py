@@ -465,8 +465,7 @@ def main():
                                          exclude_names=args.exclude_names,
                                          exclude_text=args.exclude_text,
                                          collect_opt_success=args.collect_opt_success,
-                                         annotate_external=args.annotate_external,
-                                         source_dir=source_dir)
+                                         annotate_external=args.annotate_external)
 
             map_remarks(all_remarks)
 
@@ -488,8 +487,7 @@ def main():
                                      exclude_names=args.exclude_names,
                                      exclude_text=args.exclude_text,
                                      collect_opt_success=args.collect_opt_success,
-                                     annotate_external=args.annotate_external,
-                                     source_dir=source_dir)
+                                     annotate_external=args.annotate_external)
 
         map_remarks(all_remarks)
 

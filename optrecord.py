@@ -156,7 +156,7 @@ class Remark(yaml.YAMLObject):
 
     @property
     def File(self):
-        return os.path.abspath(self.DebugLoc['File'])
+        return self.DebugLoc['File']
 
     @property
     def Line(self):
@@ -297,8 +297,7 @@ class Missed(Remark):
 class Failure(Missed):
     yaml_tag = '!Failure'
 
-def get_remarks(input_file, exclude_names=None, exclude_text = None, collect_opt_success=False, 
-                annotate_external=False, source_dir=None):
+def get_remarks(input_file, exclude_names=None, exclude_text = None, collect_opt_success=False, annotate_external=False):
     max_hotness = 0
     all_remarks = dict()
     file_remarks = defaultdict(functools.partial(defaultdict, list))
@@ -324,7 +323,7 @@ def get_remarks(input_file, exclude_names=None, exclude_text = None, collect_opt
                 continue
 
             if not annotate_external:
-                if not remark.File.startswith(source_dir):
+                if os.path.isabs(remark.File):
                     continue
 
             if exclude_names_e and exclude_names_e.search(remark.Name):
@@ -347,14 +346,12 @@ def get_remarks(input_file, exclude_names=None, exclude_text = None, collect_opt
     return max_hotness, all_remarks, file_remarks
 
 
-def gather_results(filenames, num_jobs, exclude_names=None, exclude_text=None, collect_opt_success=False,
-                    annotate_external=False, source_dir=None):
+def gather_results(filenames, num_jobs, annotate_external=False, exclude_names=None, exclude_text=None, collect_opt_success=False):
     logging.info('Reading YAML files...')
     if not Remark.demangler_proc:
         Remark.set_demangler(Remark.default_demangler)
     remarks = optpmap.pmap(
-            get_remarks, filenames, num_jobs, exclude_names, exclude_text, collect_opt_success, 
-            annotate_external, source_dir)
+                get_remarks, filenames, num_jobs, exclude_names, exclude_text, collect_opt_success, annotate_external)
 
     max_hotness = max(entry[0] for entry in remarks)
 

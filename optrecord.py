@@ -193,7 +193,7 @@ class Remark(yaml.YAMLObject):
         if dl and key != 'Caller':
             dl_dict = dict(list(dl))
             return u"<a href={}>{}</a>".format(
-                make_link(os.path.abspath(dl_dict['File']), dl_dict['Line']), value)
+                make_link(dl_dict['File'], dl_dict['Line']), value)
         else:
             return value
 

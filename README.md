@@ -3,7 +3,7 @@
 ## Video Introduction 
 https://www.youtube.com/watch?v=qmEsx4MbKoc
 
-The slides (with links) are avaiable at https://github.com/OfekShilon/CppCon2022/blob/main/Presentations/Optimization-Remarks.pdf .
+The slides (with links) are avaiable at https://github.com/CppCon/CppCon2022/blob/main/Presentations/Optimization-Remarks.pdf .
 
 This is still the best way to start, as the talk includes example script outputs and recommendations on handling them. The text below surveys background and technical usage.
 

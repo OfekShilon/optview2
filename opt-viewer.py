@@ -289,8 +289,7 @@ $(document).ready(function() {{
 ''')
     return index_path
 
-# TODO: make pmap and _wrapped_func pack arguments, so these dummies won't be needed
-def _render_file(source_dir, output_dir, ctx, entry, dummy5=None, dummy6=None, dummy7=None, dummy8=None, dummy9=None):
+def _render_file(source_dir, output_dir, ctx, entry):
     global context
     context = ctx
     filename, remarks = entry

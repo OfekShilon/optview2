@@ -3,6 +3,7 @@
 import logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
+import sys
 import io
 import yaml
 import pickle
@@ -95,6 +96,8 @@ class Remark(yaml.YAMLObject):
     def demangle(cls, name):
         if not cls.demangler_proc:
             cls.set_demangler(cls.default_demangler)
+            sys.stdout.write("demangler_proc null! Using default demangler")
+            sys.stdout.flush()
         with cls.demangler_lock:
             cls.demangler_proc.stdin.write((name + '\n').encode('utf-8'))
             cls.demangler_proc.stdin.flush()

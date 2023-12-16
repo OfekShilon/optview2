@@ -442,6 +442,7 @@ def main():
 
     if args.demangler:
         optrecord.Remark.set_demangler(args.demangler)
+        logging.info(f"using received demangler arg {args.demangler}")
 
     start_time = datetime.now()
 

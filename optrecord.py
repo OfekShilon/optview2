@@ -6,7 +6,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 import io
 import yaml
 import pickle
-
+import platform
 import optrecord
 
 try:
@@ -79,23 +79,22 @@ class Remark(yaml.YAMLObject):
 
 
     @classmethod
-    def set_base_demangler(cls, demangler):
+    def open_demangler_proc(cls, demangler):
         cls.demangler_proc = subprocess.Popen(demangler.split(), stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 
     @classmethod
     def set_demangler(cls, demangler):
-        cls.set_base_demangler(demangler)
-        cls.demangler_lock = Lock()
+        cls.open_demangler_proc(demangler)
+        if (platform.system() == 'Windows'):
+            cls.demangler_lock = EmptyLock(); # on windows we spawn demangler for each process, no Lock is needed
+        else:
+            cls.demangler_lock = Lock()
 
-    @classmethod
-    def set_demangler_no_lock(cls, demangler):
-        cls.set_base_demangler(demangler)
-        cls.demangler_lock = EmptyLock()#on windows we spawn demangler for each process anyway, Lock is not needed
 
     @classmethod
     def demangle(cls, name):
         if not cls.demangler_proc:
-            cls.set_demangler_no_lock(cls.default_demangler)
+            cls.set_demangler(cls.default_demangler)
         with cls.demangler_lock:
             cls.demangler_proc.stdin.write((name + '\n').encode('utf-8'))
             cls.demangler_proc.stdin.flush()
@@ -348,8 +347,7 @@ def get_remarks(input_file, exclude_names=None, exclude_text = None, collect_opt
 
 def gather_results(filenames, num_jobs, annotate_external=False, exclude_names=None, exclude_text=None, collect_opt_success=False):
     logging.info('Reading YAML files...')
-    if not Remark.demangler_proc:
-        Remark.set_demangler(Remark.default_demangler)
+
     remarks = optpmap.pmap(
                 get_remarks, filenames, num_jobs, exclude_names, exclude_text, collect_opt_success, annotate_external)
 

@@ -17,6 +17,8 @@ from pygments.formatters import HtmlFormatter
 import optpmap
 import optrecord
 import config_parser
+import multiprocessing
+import platform
 import logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
@@ -427,6 +429,9 @@ def main():
         '--split-top-folders',
         action='store_true',
         help='Operate separately on every top level subfolder containing opt files - to workaround out-of-memory crashes')
+
+    if platform.system() == 'Darwin':  # macOs
+        multiprocessing.set_start_method('fork') 
 
     # Do not make this a global variable.  Values needed to be propagated through
     # to individual classes and functions to be portable with multiprocessing across

@@ -1,11 +1,12 @@
+from typing import IO
 import yaml
 import re
 
 
-def parse(f):
+def parse(yaml_config_file: IO):
     "Parse config file"
     # TODO - add scheme; currently we just take whatever is there.
-    config = yaml.safe_load(f)
+    config = yaml.safe_load(yaml_config_file)
     if config.get('use_remark_filters', True) and 'remark_filters' in config and len(config['remark_filters']) > 0:
         # config wants a single regex, transform to a single expression
         try:

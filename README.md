@@ -11,7 +11,9 @@ This is still the best way to start, as the talk includes example script outputs
 
 ### Prerequisites
 - Python 3.8 or later
-- Clang compiler or other LLVM-based compiler with optimization-records support, eg: rustc, flang,
+- Clang compiler 
+
+The generated source htmls would include c++ syntax highlighting, but beyond that - everything would work for non-C++ LLVM-based compilers that emit optimization-remarks. E.g.: rustc, flang, ldc.
 
 ### Installation
 

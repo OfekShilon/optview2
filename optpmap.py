@@ -1,19 +1,27 @@
+from __future__ import annotations
 import sys
 import multiprocessing
+from typing import TYPE_CHECKING, TypeVar, Any
+if TYPE_CHECKING:
+    from collections.abc import Callable, Sequence
+    from multiprocessing.sharedctypes import Synchronized
 
 
-_current = None
-_total = None
+_current: Synchronized[int]
+_total: Synchronized[int]
 
 
-def _init(current, total):
+def _init(current: Synchronized[int], total: Synchronized[int]):
     global _current
     global _total
     _current = current
     _total = total
 
 
-def _wrapped_func(func_and_args):
+T = TypeVar('T')
+
+
+def _wrapped_func(func_and_args: tuple[Callable[..., T], Any, *tuple[Any, ...]]) -> T:
     func = func_and_args[0]
     args = func_and_args[1:]
 
@@ -25,7 +33,7 @@ def _wrapped_func(func_and_args):
     return func(*args)
 
 
-def pmap(func, iterable, processes, *args, **kwargs):
+def parallel_map(func: Callable[[Any], T], iterable: Sequence, processes: int, *args: object) -> list[T]:
     """
     A parallel map function that reports on its progress.
 

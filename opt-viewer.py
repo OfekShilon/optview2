@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-
+from __future__ import annotations
+from typing import IO
 import argparse
 import functools
 import os.path
@@ -14,12 +15,14 @@ from datetime import datetime
 from pygments import highlight
 from pygments.lexers.c_cpp import CppLexer
 from pygments.formatters import HtmlFormatter
-import optpmap
-import optrecord
 import config_parser
 import multiprocessing
 import platform
 import logging
+
+import optpmap
+import optrecord
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
 desc = '''Generate HTML output to visualize optimization records from the YAML files
@@ -38,14 +41,14 @@ class Context:
 context = Context()
 
 
-def render_file_source(source_dir, output_dir, filename, line_remarks):
+def render_file_source(source_dir: str, output_dir: str, filename: str, line_remarks):
     html_filename = os.path.join(output_dir, optrecord.html_file_name(filename))
     filename = filename if os.path.exists(filename) else os.path.join(source_dir, filename)
 
     html_formatter = HtmlFormatter(encoding='utf-8')
     cpp_lexer = CppLexer(stripnl=False)
 
-    def render_source_lines(stream, line_remarks):
+    def render_source_lines(stream: IO, line_remarks):
         file_text = stream.read()
 
         html_highlighted = highlight(
@@ -89,7 +92,7 @@ def render_file_source(source_dir, output_dir, filename, line_remarks):
                            0,
                            {'class': "column-entry-yellow", 'text': ''},
                            {'class': 'column-entry-yellow',
-                               'text': f'''<span " class="indent-span">{"&nbsp"*(columns[0]-1) + '^'}&nbsp;</span>'''},
+                               'text': f'<span " class="indent-span">{"&nbsp" * (columns[0] - 1) + '^'}&nbsp;</span>'},
                            {'class': "column-entry-yellow", 'text': ''},
                            ]
                 for remark in remarks:
@@ -98,17 +101,18 @@ def render_file_source(source_dir, output_dir, filename, line_remarks):
                     yield ['',
                            0,
                            {'class': "column-entry-yellow", 'text': ''},
-                           {'class': 'column-entry-yellow', 'text': f'''<span " class="indent-span">...{count_deleted[obj_name]} similar remarks omitted.&nbsp;</span>'''},
+                           {'class': 'column-entry-yellow',
+                               'text': f'''<span " class="indent-span">...{count_deleted[obj_name]} similar remarks omitted.&nbsp;</span>'''},  # noqa: E501
                            {'class': "column-entry-yellow", 'text': ''},
                            ]
 
-    def render_inline_remark(remark, line):
-        inlining_context = remark.DemangledFunctionName
+    def render_inline_remark(remark: optrecord.Remark, line: str):
+        inlining_context = remark.demangled_func_name
         dl = context.caller_loc.get(remark.Function)
         if dl:
             dl_dict = dict(list(dl))
             link = optrecord.make_link(dl_dict['File'], dl_dict['Line'] - 2)
-            inlining_context = f"<a href={link}>{remark.DemangledFunctionName}</a>"
+            inlining_context = f"<a href={link}>{remark.demangled_func_name}</a>"
 
         start_line = re.sub("^<span>", "", line)
         spaces = len(start_line) - len(start_line.lstrip())
@@ -117,7 +121,7 @@ def render_file_source(source_dir, output_dir, filename, line_remarks):
         # Create expanded message and link if we have a multiline message.
         lines = remark.message.split('\n')
         if len(lines) > 1:
-            expand_link = '<a style="text-decoration: none;" href="" onclick="toggleExpandedMessage(this); return false;">+</a>'
+            expand_link = '<a style="text-decoration: none;" href="" onclick="toggleExpandedMessage(this); return false;">+</a>'  # noqa: E501
             message = lines[0]
             other_lines = "\n".join(lines[1:])
             expand_message = f'''
@@ -130,8 +134,9 @@ def render_file_source(source_dir, output_dir, filename, line_remarks):
             message = remark.message
         return ['',
                 remark.RelativeHotness,
-                {'class': f"column-entry-{remark.color}", 'text': remark.PassWithDiffPrefix},
-                {'class': 'column-entry-yellow', 'text': f'''<span style="margin-left: {indent};" class="indent-span">&bull; {expand_link} {message}&nbsp;</span>{expand_message}'''},
+                {'class': f"column-entry-{remark.color}", 'text': remark.pass_with_diff_prefix},
+                {'class': 'column-entry-yellow',
+                    'text': f'''<span style="margin-left: {indent};" class="indent-span">&bull; {expand_link} {message}&nbsp;</span>{expand_message}'''},  # noqa: E501
                 {'class': "column-entry-yellow", 'text': inlining_context},
                 ]
 
@@ -232,9 +237,9 @@ $(document).ready(function() {{
 def render_index(output_dir, all_remarks):
     def render_entry(remark):
         return dict(description=remark.Name,
-                    loc=f"<a href={remark.Link}>{remark.DebugLocString}</a>",
+                    loc=f"<a href={remark.Link}>{remark.debug_loc_string}</a>",
                     message=remark.message,
-                    functionName=remark.DemangledFunctionName,
+                    functionName=remark.demangled_func_name,
                     relativeHotness=remark.RelativeHotness,
                     color=remark.color)
 
@@ -296,7 +301,7 @@ $(document).ready(function() {{
     return index_path
 
 
-def _render_file(source_dir, output_dir, ctx, entry):
+def _render_file(source_dir: str, output_dir: str, ctx: Context, entry):
     global context
     context = ctx
     filename, remarks = entry
@@ -306,7 +311,7 @@ def _render_file(source_dir, output_dir, ctx, entry):
 def map_remarks(all_remarks):
     # Set up a map between function names and their source location for
     # function where inlining happened
-    for remark in optrecord.itervalues(all_remarks):
+    for remark in all_remarks.values():
         if isinstance(remark, optrecord.Passed) and remark.Pass == "inline" and remark.Name == "Inlined":
             for arg in remark.Args:
                 arg_dict = dict(list(arg))
@@ -320,11 +325,11 @@ def map_remarks(all_remarks):
 
 def generate_report(all_remarks,
                     file_remarks,
-                    source_dir,
-                    output_dir,
-                    should_display_hotness,
-                    num_jobs=1,
-                    open_browser=False):
+                    source_dir: str,
+                    output_dir: str,
+                    should_display_hotness: bool,
+                    num_jobs: int = 1,
+                    open_browser: bool = False):
     pathlib.Path(output_dir).mkdir(parents=True, exist_ok=True)
 
     logging.info('Rendering index page...')
@@ -334,13 +339,13 @@ def generate_report(all_remarks,
             exactly the path from which the compiler was invoked.""")
         return
 
-    sorted_remarks = sorted(optrecord.itervalues(all_remarks),
-                            key=lambda r: (r.File, r.Line, r.Column, r.PassWithDiffPrefix))
+    sorted_remarks = sorted(all_remarks.values(),
+                            key=lambda r: (r.File, r.Line, r.Column, r.pass_with_diff_prefix))
     unique_lines_remarks = [sorted_remarks[0]]
     for rmk in sorted_remarks:
         last_unq_rmk = unique_lines_remarks[-1]
-        last_rmk_key = (last_unq_rmk.File, last_unq_rmk.Line, last_unq_rmk.Column, last_unq_rmk.PassWithDiffPrefix)
-        rmk_key = (rmk.File, rmk.Line, rmk.Column, rmk.PassWithDiffPrefix)
+        last_rmk_key = (last_unq_rmk.File, last_unq_rmk.Line, last_unq_rmk.Column, last_unq_rmk.pass_with_diff_prefix)
+        rmk_key = (rmk.File, rmk.Line, rmk.Column, rmk.pass_with_diff_prefix)
         if rmk_key != last_rmk_key:
             unique_lines_remarks.append(rmk)
     logging.info("  {:d} unique source locations".format(len(unique_lines_remarks)))
@@ -348,11 +353,12 @@ def generate_report(all_remarks,
     if should_display_hotness:
         sorted_remarks = sorted(unique_lines_remarks,
                                 key=lambda r: (r.Hotness, r.File, r.Line, r.Column,
-                                               r.PassWithDiffPrefix, r.yaml_tag, r.Function),
+                                               r.pass_with_diff_prefix, r.yaml_tag, r.Function),
                                 reverse=True)
     else:
         sorted_remarks = sorted(unique_lines_remarks,
-                                key=lambda r: (r.File, r.Line, r.Column, r.PassWithDiffPrefix, r.yaml_tag, r.Function))
+                                key=lambda r:
+                                    (r.File, r.Line, r.Column, r.pass_with_diff_prefix, r.yaml_tag, r.Function))
 
     index_path = render_index(output_dir, sorted_remarks)
 
@@ -364,9 +370,9 @@ def generate_report(all_remarks,
 
     _render_file_bound = functools.partial(_render_file, source_dir, output_dir, context)
     logging.info('Rendering HTML files...')
-    optpmap.pmap(func=_render_file_bound,
-                 iterable=file_remarks.items(),
-                 processes=num_jobs)
+    optpmap.parallel_map(func=_render_file_bound,
+                         iterable=file_remarks.items(),
+                         processes=num_jobs)
 
     url_path = f'file://{os.path.abspath(index_path)}'
     logging.info(f'Done - check the index page at {url_path}')
@@ -517,7 +523,7 @@ def main():
                         open_browser=args.open_browser)
 
     end_time = datetime.now()
-    logging.info(f"Ran for {end_time-start_time}")
+    logging.info(f"Ran for {end_time - start_time}")
 
 
 if __name__ == '__main__':

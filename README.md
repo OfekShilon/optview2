@@ -7,6 +7,40 @@ The slides (with links) are available at https://github.com/CppCon/CppCon2022/bl
 
 This is still the best way to start, as the talk includes example script outputs and recommendations on handling them. The text below surveys background and technical usage.
 
+## Quick Start
+
+### Prerequisites
+- Python 3.8 or later
+- Clang compiler or other LLVM-based compiler with optimization-records support, eg: rustc, flang,
+
+### Installation
+
+1. Clone the repository:
+```bash
+git clone <your-repo-url>
+cd optview2
+```
+
+2. Set up virtual environment (recommended):
+
+```bash
+./setup_venv.sh
+./activate.sh
+```
+
+**Manual setup:**
+```bash
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+3. Run the example:
+```bash
+cd cpp_optimization_example
+bash run_optview2.sh
+```
+
 ## Text Introduction
 
 In the beginning there was the compiler switch [`-Rpass`](https://clang.llvm.org/docs/UsersManual.html#options-to-emit-optimization-reports), and it was good. Sorta. Clang users who wanted visibility into compiler optimization decisions could dump a wall of text and sift through it trying to make up what's important and what's actionable.

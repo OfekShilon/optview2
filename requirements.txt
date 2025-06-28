@@ -1,3 +1,6 @@
+# OptView2 Dependencies
+# Requires Python 3.8+
+
 PyYAML>=3.12
 Pygments>=2.2.0
 #guppy>=0.1.11

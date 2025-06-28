@@ -1,38 +1,27 @@
 #!/usr/bin/env python
-
-import logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-
 import io
 import yaml
-import pickle
 import platform
 import optrecord
-
-try:
-    # Try to use the C parser.
-    from yaml import CLoader as Loader
-except ImportError:
-    logging.warning("For faster parsing, you may want to install libYAML for PyYAML")
-    from yaml import Loader
-
 import html
 from collections import defaultdict
 import fnmatch
 import functools
 from multiprocessing import Lock
-import os, os.path
+import os
 import subprocess
-try:
-    # The previously builtin function `intern()` was moved
-    # to the `sys` module in Python 3.
-    from sys import intern
-except:
-    pass
-
 import re
-
+from sys import intern
 import optpmap
+import logging
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+
+try:
+    # Try to use the C parser
+    from yaml import CLoader as Loader
+except ImportError:
+    logging.warning("For faster parsing, you may want to install libYAML for PyYAML")
+    from yaml import Loader
 
 try:
     dict.iteritems
@@ -40,12 +29,14 @@ except AttributeError:
     # Python 3
     def itervalues(d):
         return iter(d.values())
+
     def iteritems(d):
         return iter(d.items())
 else:
     # Python 2
     def itervalues(d):
         return d.itervalues()
+
     def iteritems(d):
         return d.iteritems()
 
@@ -61,11 +52,14 @@ def html_file_name(filename):
 def make_link(File, Line):
     return "\"{}#L{}\"".format(html_file_name(File), Line)
 
+
 class EmptyLock(object):
     def __enter__(self):
         return True
+
     def __exit__(self, *args):
         pass
+
 
 class Remark(yaml.YAMLObject):
     # Work-around for http://pyyaml.org/ticket/154.
@@ -77,7 +71,6 @@ class Remark(yaml.YAMLObject):
 #    @classmethod
 #    def find_demangler(cls):
 
-
     @classmethod
     def open_demangler_proc(cls, demangler):
         cls.demangler_proc = subprocess.Popen(demangler.split(), stdin=subprocess.PIPE, stdout=subprocess.PIPE)
@@ -86,10 +79,9 @@ class Remark(yaml.YAMLObject):
     def set_demangler(cls, demangler):
         cls.open_demangler_proc(demangler)
         if (platform.system() == 'Windows'):
-            cls.demangler_lock = EmptyLock(); # on windows we spawn demangler for each process, no Lock is needed
+            cls.demangler_lock = EmptyLock()  # on windows we spawn demangler for each process, no Lock is needed
         else:
             cls.demangler_lock = Lock()
-
 
     @classmethod
     def demangle(cls, name):
@@ -110,11 +102,7 @@ class Remark(yaml.YAMLObject):
     def _reduce_memory(self):
         self.Pass = intern(self.Pass)
         self.Name = intern(self.Name)
-        try:
-            # Can't intern unicode strings.
-            self.Function = intern(self.Function)
-        except:
-            pass
+        self.Function = intern(self.Function)
 
         def _reduce_memory_dict(old_dict):
             new_dict = dict()
@@ -183,7 +171,7 @@ class Remark(yaml.YAMLObject):
         if dl:
             del mapping['DebugLoc']
 
-        assert(len(mapping) == 1)
+        assert len(mapping) == 1
         (key, value) = list(mapping.items())[0]
 
         if key == 'Caller' or key == 'Callee' or key == 'DirectCallee':
@@ -209,7 +197,7 @@ class Remark(yaml.YAMLObject):
                 if arg[0][0] == 'DebugLoc':
                     dbgidx = 0
                 else:
-                    assert(arg[1][0] == 'DebugLoc')
+                    assert arg[1][0] == 'DebugLoc'
                     dbgidx = 1
 
                 key = arg[1 - dbgidx][0]
@@ -293,17 +281,23 @@ class Missed(Remark):
     def color(self):
         return "red"
 
+
 class Failure(Missed):
     yaml_tag = '!Failure'
 
-def get_remarks(input_file, exclude_names=None, exclude_text = None, collect_opt_success=False, annotate_external=False):
+
+def get_remarks(input_file: str,
+                exclude_names: str = None,
+                exclude_text: str = None,
+                collect_opt_success: bool = False,
+                annotate_external: bool = False):
     max_hotness = 0
     all_remarks = dict()
     file_remarks = defaultdict(functools.partial(defaultdict, list))
-    #logging.debug(f"Parsing {input_file}")
+    # logging.debug(f"Parsing {input_file}")
 
-    #TODO: filter unique name+file+line loc *here*
-    with io.open(input_file, encoding = 'utf-8') as f:
+    # TODO: filter unique name+file+line loc *here*
+    with io.open(input_file, encoding='utf-8') as f:
         docs = yaml.load_all(f, Loader=Loader)
 
         exclude_text_e = None
@@ -318,7 +312,8 @@ def get_remarks(input_file, exclude_names=None, exclude_text = None, collect_opt
             if not hasattr(remark, 'DebugLoc') or remark.key in all_remarks:
                 continue
 
-            if not collect_opt_success and not (isinstance(remark, optrecord.Missed) | isinstance(remark, optrecord.Failure)):
+            if not collect_opt_success and \
+                    not (isinstance(remark, optrecord.Missed) | isinstance(remark, optrecord.Failure)):
                 continue
 
             if not annotate_external:
@@ -345,7 +340,11 @@ def get_remarks(input_file, exclude_names=None, exclude_text = None, collect_opt
     return max_hotness, all_remarks, file_remarks
 
 
-def gather_results(filenames, num_jobs, annotate_external=False, exclude_names=None, exclude_text=None, collect_opt_success=False):
+def gather_results(filenames: list[str], num_jobs: int,
+                   annotate_external: bool = False,
+                   exclude_names: str = None,
+                   exclude_text: bool = None,
+                   collect_opt_success: bool = False):
     logging.info('Reading YAML files...')
 
     remarks = optpmap.pmap(

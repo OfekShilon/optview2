@@ -30,9 +30,10 @@ The tools requires PyYAML and Pygments Python packages.'''
 
 # This allows passing the global context to the child processes.
 class Context:
-    def __init__(self, caller_loc = dict()):
-       # Map function names to their source location for function where inlining happened
-       self.caller_loc = caller_loc
+    def __init__(self, caller_loc=dict()):
+        # Map function names to their source location for function where inlining happened
+        self.caller_loc = caller_loc
+
 
 context = Context()
 
@@ -65,7 +66,10 @@ def render_file_source(source_dir, output_dir, filename, line_remarks):
         html_highlighted = html_highlighted.replace('</pre></div>', '')
 
         for (linenum, html_line) in enumerate(html_highlighted.split('\n'), start=1):
-            yield [f'<a name="L{linenum}">{linenum}</a>', '', '', f'<div class="highlight"><pre>{html_line}</pre></div>', '']
+            yield [f'<a name="L{linenum}">{linenum}</a>',
+                   '',
+                   '',
+                   f'<div class="highlight"><pre>{html_line}</pre></div>', '']
 
             cur_line_remarks = line_remarks.get(linenum, [])
             from collections import defaultdict
@@ -82,22 +86,21 @@ def render_file_source(source_dir, output_dir, filename, line_remarks):
                 columns = [r.Column for r in remarks]
                 if all(c == columns[0] for c in columns) and columns[0] != 0:
                     yield ['',
-                       0,
-                       {'class': f"column-entry-yellow", 'text': ''},
-                       {'class': 'column-entry-yellow',
-                        'text': f'''<span " class="indent-span">{"&nbsp"*(columns[0]-1) + '^'}&nbsp;</span>'''},
-                       {'class': f"column-entry-yellow", 'text': ''},
-                       ]
+                           0,
+                           {'class': "column-entry-yellow", 'text': ''},
+                           {'class': 'column-entry-yellow',
+                               'text': f'''<span " class="indent-span">{"&nbsp"*(columns[0]-1) + '^'}&nbsp;</span>'''},
+                           {'class': "column-entry-yellow", 'text': ''},
+                           ]
                 for remark in remarks:
                     yield render_inline_remark(remark, html_line)
                 if count_deleted[obj_name] != 0:
                     yield ['',
-                        0,
-                        {'class': f"column-entry-yellow", 'text': ''},
-                        {'class': 'column-entry-yellow', 'text': f'''<span " class="indent-span">...{count_deleted[obj_name]} similar remarks omitted.&nbsp;</span>'''},
-                        {'class': f"column-entry-yellow", 'text': ''},
-                        ]
-
+                           0,
+                           {'class': "column-entry-yellow", 'text': ''},
+                           {'class': 'column-entry-yellow', 'text': f'''<span " class="indent-span">...{count_deleted[obj_name]} similar remarks omitted.&nbsp;</span>'''},
+                           {'class': "column-entry-yellow", 'text': ''},
+                           ]
 
     def render_inline_remark(remark, line):
         inlining_context = remark.DemangledFunctionName
@@ -129,10 +132,10 @@ def render_file_source(source_dir, output_dir, filename, line_remarks):
                 remark.RelativeHotness,
                 {'class': f"column-entry-{remark.color}", 'text': remark.PassWithDiffPrefix},
                 {'class': 'column-entry-yellow', 'text': f'''<span style="margin-left: {indent};" class="indent-span">&bull; {expand_link} {message}&nbsp;</span>{expand_message}'''},
-                {'class': f"column-entry-yellow", 'text': inlining_context},
+                {'class': "column-entry-yellow", 'text': inlining_context},
                 ]
 
-    with open(html_filename, "w", encoding='utf-8') as f: 
+    with open(html_filename, "w", encoding='utf-8') as f:
         if not os.path.exists(filename):
             f.write(f'''
     <html>
@@ -225,6 +228,7 @@ $(document).ready(function() {{
 </html>
 ''')
 
+
 def render_index(output_dir, all_remarks):
     def render_entry(remark):
         return dict(description=remark.Name,
@@ -291,6 +295,7 @@ $(document).ready(function() {{
 ''')
     return index_path
 
+
 def _render_file(source_dir, output_dir, ctx, entry):
     global context
     context = ctx
@@ -325,10 +330,12 @@ def generate_report(all_remarks,
     logging.info('Rendering index page...')
     logging.info(f"  {len(all_remarks):d} raw remarks")
     if len(all_remarks) == 0:
-        logging.warning("Not generating report! Please verify your --source-dir argument is exactly the path from which the compiler was invoked.")
+        logging.warning("""Not generating report! Please verify your --source-dir argument is
+            exactly the path from which the compiler was invoked.""")
         return
-        
-    sorted_remarks = sorted(optrecord.itervalues(all_remarks), key=lambda r: (r.File, r.Line, r.Column, r.PassWithDiffPrefix))
+
+    sorted_remarks = sorted(optrecord.itervalues(all_remarks),
+                            key=lambda r: (r.File, r.Line, r.Column, r.PassWithDiffPrefix))
     unique_lines_remarks = [sorted_remarks[0]]
     for rmk in sorted_remarks:
         last_unq_rmk = unique_lines_remarks[-1]
@@ -339,9 +346,13 @@ def generate_report(all_remarks,
     logging.info("  {:d} unique source locations".format(len(unique_lines_remarks)))
 
     if should_display_hotness:
-        sorted_remarks = sorted(unique_lines_remarks, key=lambda r: (r.Hotness, r.File, r.Line, r.Column, r.PassWithDiffPrefix, r.yaml_tag, r.Function), reverse=True)
+        sorted_remarks = sorted(unique_lines_remarks,
+                                key=lambda r: (r.Hotness, r.File, r.Line, r.Column,
+                                               r.PassWithDiffPrefix, r.yaml_tag, r.Function),
+                                reverse=True)
     else:
-        sorted_remarks = sorted(unique_lines_remarks, key=lambda r: (r.File, r.Line, r.Column, r.PassWithDiffPrefix, r.yaml_tag, r.Function))
+        sorted_remarks = sorted(unique_lines_remarks,
+                                key=lambda r: (r.File, r.Line, r.Column, r.PassWithDiffPrefix, r.yaml_tag, r.Function))
 
     index_path = render_index(output_dir, sorted_remarks)
 
@@ -362,12 +373,13 @@ def generate_report(all_remarks,
     if open_browser:
         try:
             import webbrowser
-            if webbrowser.get("wslview %s") == None:
+            if webbrowser.get("wslview %s") is None:
                 webbrowser.open(url_path)
             else:
                 webbrowser.get("wslview %s").open(url_path)
         except Exception:
             pass
+
 
 def main():
     parser = argparse.ArgumentParser(description=desc)
@@ -428,10 +440,11 @@ def main():
     parser.add_argument(
         '--split-top-folders',
         action='store_true',
-        help='Operate separately on every top level subfolder containing opt files - to workaround out-of-memory crashes')
+        help='''Operate separately on every top level subfolder containing opt files -
+            to workaround out-of-memory crashes''')
 
     if platform.system() == 'Darwin':  # macOs
-        multiprocessing.set_start_method('fork') 
+        multiprocessing.set_start_method('fork')
 
     # Do not make this a global variable.  Values needed to be propagated through
     # to individual classes and functions to be portable with multiprocessing across
@@ -474,13 +487,13 @@ def main():
             map_remarks(all_remarks)
 
             generate_report(all_remarks=all_remarks,
-                        file_remarks=file_remarks,
-                        source_dir=source_dir,
-                        output_dir=os.path.join(args.output_dir, subfolder),
-                        should_display_hotness=should_display_hotness,
-                        num_jobs=args.jobs,
-                        open_browser=args.open_browser)
-    else: # not split_top_foders
+                            file_remarks=file_remarks,
+                            source_dir=source_dir,
+                            output_dir=os.path.join(args.output_dir, subfolder),
+                            should_display_hotness=should_display_hotness,
+                            num_jobs=args.jobs,
+                            open_browser=args.open_browser)
+    else:  # not split_top_foders
         files = optrecord.find_opt_files(os.path.join(*args.yaml_dirs_or_files))
         if not files:
             parser.error("No *.opt.yaml files found")
@@ -506,6 +519,6 @@ def main():
     end_time = datetime.now()
     logging.info(f"Ran for {end_time-start_time}")
 
+
 if __name__ == '__main__':
     main()
-

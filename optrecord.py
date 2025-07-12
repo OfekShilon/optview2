@@ -26,7 +26,7 @@ try:
     from yaml import CLoader as Loader
 except ImportError:
     logging.warning("For faster parsing, you may want to install libYAML for PyYAML")
-    from yaml import Loader
+    from yaml import Loader  # type: ignore
 
 
 def html_file_name(filename: str) -> str:
@@ -64,9 +64,10 @@ class Remark(yaml.YAMLObject):
     Hotness: int = 0
     max_hotness: int = 0
 
-    # Optional attributes that may be present in diff files
+    # Optional attribute that may be present in diff files
     Added: bool | None = None
 
+    # Regular class attributes
     default_demangler = 'c++filt -n -p'
     demangler_proc: subprocess.Popen | None = None
     demangler_lock: LockType | EmptyLock

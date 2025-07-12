@@ -21,7 +21,7 @@ import platform
 import logging
 
 import optpmap
-import optrecord
+from optrecord import Remark, Passed, gather_results, find_opt_files, make_link, html_file_name, DictLine2Remarks
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
@@ -41,14 +41,15 @@ class Context:
 context = Context()
 
 
-def render_file_source(source_dir: str, output_dir: str, filename: str, line_remarks):
-    html_filename = os.path.join(output_dir, optrecord.html_file_name(filename))
+def render_file_source(source_dir: str, output_dir: str, filename: str,
+                       line_remarks: DictLine2Remarks):
+    html_filename = os.path.join(output_dir, html_file_name(filename))
     filename = filename if os.path.exists(filename) else os.path.join(source_dir, filename)
 
     html_formatter = HtmlFormatter(encoding='utf-8')
     cpp_lexer = CppLexer(stripnl=False)
 
-    def render_source_lines(stream: IO, line_remarks):
+    def render_source_lines(stream: IO, line_remarks: dict[int, list[Remark]]):
         file_text = stream.read()
 
         html_highlighted = highlight(
@@ -56,12 +57,8 @@ def render_file_source(source_dir: str, output_dir: str, filename: str, line_rem
             cpp_lexer,
             html_formatter)
 
-        # Note that the API is different between Python 2 and 3.  On
-        # Python 3, pygments.highlight() returns a bytes object, so we
-        # have to decode.  On Python 2, the output is str but since we
-        # support unicode characters and the output streams is unicode we
-        # decode too.
-        html_highlighted = html_highlighted.decode('utf-8')
+        # pygments.highlight() returns a bytes object, so we have to decode
+        html_highlighted = html_highlighted.decode('utf-8')  # type: ignore
 
         # Take off the header and footer, these must be
         #   reapplied line-wise, within the page structure
@@ -76,13 +73,13 @@ def render_file_source(source_dir: str, output_dir: str, filename: str, line_rem
 
             cur_line_remarks = line_remarks.get(linenum, [])
             from collections import defaultdict
-            d = defaultdict(list)
-            count_deleted = defaultdict(int)
-            for obj in cur_line_remarks:
-                if len(d[obj.Name]) < 5:
-                    d[obj.Name].append(obj)
+            d: dict[str, list[Remark]] = defaultdict(list)
+            count_deleted: dict[str, int] = defaultdict(int)
+            for remark in cur_line_remarks:
+                if len(d[remark.Name]) < 5:
+                    d[remark.Name].append(remark)
                 else:
-                    count_deleted[obj.Name] += 1
+                    count_deleted[remark.Name] += 1
 
             for obj_name, remarks in d.items():
                 # render caret line, if all rendered remarks share a column
@@ -106,12 +103,12 @@ def render_file_source(source_dir: str, output_dir: str, filename: str, line_rem
                            {'class': "column-entry-yellow", 'text': ''},
                            ]
 
-    def render_inline_remark(remark: optrecord.Remark, line: str):
+    def render_inline_remark(remark: Remark, line: str):
         inlining_context = remark.demangled_func_name
         dl = context.caller_loc.get(remark.Function)
         if dl:
             dl_dict = dict(list(dl))
-            link = optrecord.make_link(dl_dict['File'], dl_dict['Line'] - 2)
+            link = make_link(dl_dict['File'], dl_dict['Line'] - 2)
             inlining_context = f"<a href={link}>{remark.demangled_func_name}</a>"
 
         start_line = re.sub("^<span>", "", line)
@@ -301,7 +298,8 @@ $(document).ready(function() {{
     return index_path
 
 
-def _render_file(source_dir: str, output_dir: str, ctx: Context, entry):
+def _render_file(source_dir: str, output_dir: str, ctx: Context,
+                 entry: tuple[str, dict[int, list[Remark]]]):
     global context
     context = ctx
     filename, remarks = entry
@@ -312,7 +310,7 @@ def map_remarks(all_remarks):
     # Set up a map between function names and their source location for
     # function where inlining happened
     for remark in all_remarks.values():
-        if isinstance(remark, optrecord.Passed) and remark.Pass == "inline" and remark.Name == "Inlined":
+        if isinstance(remark, Passed) and remark.Pass == "inline" and remark.Name == "Inlined":
             for arg in remark.Args:
                 arg_dict = dict(list(arg))
                 caller = arg_dict.get('Caller')
@@ -416,7 +414,7 @@ def main():
 
     parser.add_argument(
         '--demangler',
-        help='Set the demangler to be used (defaults to %s)' % optrecord.Remark.default_demangler)
+        help='Set the demangler to be used (defaults to %s)' % Remark.default_demangler)
 
     parser.add_argument(
         '--exclude-name',
@@ -465,7 +463,7 @@ def main():
     source_dir = os.path.abspath(args.source_dir)
 
     if args.demangler:
-        optrecord.Remark.set_demangler(args.demangler)
+        Remark.set_demangler(args.demangler)
 
     start_time = datetime.now()
 
@@ -477,18 +475,18 @@ def main():
             subfolders.append(item)
 
         for subfolder in subfolders:
-            files = optrecord.find_opt_files(os.path.join(args.yaml_dirs_or_files[0], subfolder))
+            files = find_opt_files(os.path.join(args.yaml_dirs_or_files[0], subfolder))
             if not files:
                 continue
 
             logging.info(f"Processing subfolder {subfolder}")
 
             all_remarks, file_remarks, should_display_hotness = \
-                optrecord.gather_results(filenames=files, num_jobs=args.jobs,
-                                         exclude_names=args.exclude_names,
-                                         exclude_text=args.exclude_text,
-                                         collect_opt_success=args.collect_opt_success,
-                                         annotate_external=args.annotate_external)
+                gather_results(filenames=files, num_jobs=args.jobs,
+                               exclude_names=args.exclude_names,
+                               exclude_text=args.exclude_text,
+                               collect_opt_success=args.collect_opt_success,
+                               annotate_external=args.annotate_external)
 
             map_remarks(all_remarks)
 
@@ -500,17 +498,17 @@ def main():
                             num_jobs=args.jobs,
                             open_browser=args.open_browser)
     else:  # not split_top_foders
-        files = optrecord.find_opt_files(os.path.join(*args.yaml_dirs_or_files))
+        files = find_opt_files(os.path.join(*args.yaml_dirs_or_files))
         if not files:
             parser.error("No *.opt.yaml files found")
             sys.exit(1)
 
         all_remarks, file_remarks, should_display_hotness = \
-            optrecord.gather_results(filenames=files, num_jobs=args.jobs,
-                                     exclude_names=args.exclude_names,
-                                     exclude_text=args.exclude_text,
-                                     collect_opt_success=args.collect_opt_success,
-                                     annotate_external=args.annotate_external)
+            gather_results(filenames=files, num_jobs=args.jobs,
+                           exclude_names=args.exclude_names,
+                           exclude_text=args.exclude_text,
+                           collect_opt_success=args.collect_opt_success,
+                           annotate_external=args.annotate_external)
 
         map_remarks(all_remarks)
 

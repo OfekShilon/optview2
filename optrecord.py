@@ -1,7 +1,7 @@
 #!/usr/bin/env python
+from __future__ import annotations
 import io
-from collections.abc import Iterator
-from typing import Any
+from typing import TYPE_CHECKING
 import yaml
 import platform
 import html
@@ -15,6 +15,10 @@ import re
 from sys import intern
 import optpmap
 import logging
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+    from multiprocessing.synchronize import Lock as LockType
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
 try:
@@ -45,8 +49,10 @@ class EmptyLock(object):
         pass
 
 
+RemarkKey = tuple[str, str, str, str, int, int, str, tuple[tuple[str, ...]]]
+
+
 class Remark(yaml.YAMLObject):
-    # Work-around for http://pyyaml.org/ticket/154.
     yaml_loader = Loader
 
     # Type-annotated attributes that will be populated from YAML
@@ -54,7 +60,7 @@ class Remark(yaml.YAMLObject):
     Name: str
     Function: str
     DebugLoc: dict[str, str | int]
-    Args: list[dict[str, Any]] | tuple
+    Args: tuple[tuple[str, ...]]
     Hotness: int = 0
     max_hotness: int = 0
 
@@ -63,6 +69,7 @@ class Remark(yaml.YAMLObject):
 
     default_demangler = 'c++filt -n -p'
     demangler_proc: subprocess.Popen | None = None
+    demangler_lock: LockType | EmptyLock
 
     @classmethod
     def open_demangler_proc(cls, demangler: str):
@@ -86,6 +93,10 @@ class Remark(yaml.YAMLObject):
             cls.demangler_proc.stdin.flush()  # type: ignore
             return cls.demangler_proc.stdout.readline().rstrip().decode('utf-8')  # type: ignore
 
+    @property
+    def color(self) -> str:
+        raise NotImplementedError("Remark Subclasses must implement the color property")
+
     # Intern all strings since we have lot of duplication across filenames,
     # remark text.
     #
@@ -103,7 +114,6 @@ class Remark(yaml.YAMLObject):
             for (k, v) in old_dict.items():
                 if type(k) is str:
                     k = intern(k)
-
                 if type(v) is str:
                     v = intern(v)
                 elif type(v) is dict:
@@ -230,7 +240,7 @@ class Remark(yaml.YAMLObject):
             return ''
 
     @property
-    def key(self):
+    def key(self) -> RemarkKey:
         return (self.__class__.__name__, self.pass_with_diff_prefix, self.Name, self.File,
                 self.Line, self.Column, self.Function, self.Args)
 
@@ -243,6 +253,10 @@ class Remark(yaml.YAMLObject):
 
     def __repr__(self) -> str:
         return str(self.key)
+
+
+DictLine2Remarks = dict[int, list[Remark]]
+DictFile2Remarks = dict[str, DictLine2Remarks]
 
 
 class Analysis(Remark):
@@ -282,13 +296,14 @@ class Failure(Missed):
 
 
 def get_remarks(input_file: str,
-                exclude_names: str = None,
-                exclude_text: str = None,
+                exclude_names: str | None = None,
+                exclude_text: str | None = None,
                 collect_opt_success: bool = False,
-                annotate_external: bool = False):
+                annotate_external: bool = False) -> \
+        tuple[int, dict[RemarkKey, Remark], DictFile2Remarks]:
     max_hotness = 0
-    all_remarks = dict()
-    file_remarks = defaultdict(functools.partial(defaultdict, list))
+    all_remarks: dict[RemarkKey, Remark] = dict()
+    file_remarks: DictFile2Remarks = defaultdict(functools.partial(defaultdict, list))
 
     # TODO: filter unique name+file+line loc *here*
     with io.open(input_file, encoding='utf-8') as f:
@@ -331,10 +346,11 @@ def get_remarks(input_file: str,
     return max_hotness, all_remarks, file_remarks
 
 
-def gather_results(filenames: list[str], num_jobs: int,
+def gather_results(filenames: list[str],
+                   num_jobs: int,
                    annotate_external: bool = False,
-                   exclude_names: str = None,
-                   exclude_text: str = None,
+                   exclude_names: str | None = None,
+                   exclude_text: str | None = None,
                    collect_opt_success: bool = False):
     logging.info('Reading YAML files...')
 
@@ -343,7 +359,9 @@ def gather_results(filenames: list[str], num_jobs: int,
 
     max_hotness = max(entry[0] for entry in remarks)
 
-    def merge_file_remarks(file_remarks_job, all_remarks, merged):
+    def merge_file_remarks(file_remarks_job: DictFile2Remarks,
+                           all_remarks: dict[RemarkKey, Remark],
+                           merged: DictFile2Remarks):
         for filename, d in file_remarks_job.items():
             for line, remarks in d.items():
                 for remark in remarks:
@@ -353,8 +371,8 @@ def gather_results(filenames: list[str], num_jobs: int,
                     if remark.key not in all_remarks:
                         merged[filename][line].append(remark)
 
-    all_remarks = dict()
-    file_remarks = defaultdict(functools.partial(defaultdict, list))
+    all_remarks: dict[RemarkKey, Remark] = dict()
+    file_remarks: DictFile2Remarks = defaultdict(functools.partial(defaultdict, list))
     for _, all_remarks_job, file_remarks_job in remarks:
         merge_file_remarks(file_remarks_job, all_remarks, file_remarks)
         all_remarks.update(all_remarks_job)

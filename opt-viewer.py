@@ -21,7 +21,8 @@ import platform
 import logging
 
 import optpmap
-from optrecord import Remark, Passed, gather_results, find_opt_files, make_link, html_file_name, DictLine2Remarks
+from optrecord import Remark, Passed, RemarkKey, gather_results, find_opt_files, make_link, html_file_name, \
+    DictLine2Remarks, DictFile2Remarks
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
@@ -231,8 +232,8 @@ $(document).ready(function() {{
 ''')
 
 
-def render_index(output_dir, all_remarks):
-    def render_entry(remark):
+def render_index(output_dir: str, all_remarks: list[Remark]) -> str:
+    def render_entry(remark: Remark):
         return dict(description=remark.Name,
                     loc=f"<a href={remark.Link}>{remark.debug_loc_string}</a>",
                     message=remark.message,
@@ -306,13 +307,13 @@ def _render_file(source_dir: str, output_dir: str, ctx: Context,
     render_file_source(source_dir, output_dir, filename, remarks)
 
 
-def map_remarks(all_remarks):
+def map_remarks(all_remarks: dict[RemarkKey, Remark]):
     # Set up a map between function names and their source location for
     # function where inlining happened
     for remark in all_remarks.values():
         if isinstance(remark, Passed) and remark.Pass == "inline" and remark.Name == "Inlined":
             for arg in remark.Args:
-                arg_dict = dict(list(arg))
+                arg_dict: dict[str, str] = dict(arg)
                 caller = arg_dict.get('Caller')
                 if caller:
                     try:
@@ -321,8 +322,8 @@ def map_remarks(all_remarks):
                         pass
 
 
-def generate_report(all_remarks,
-                    file_remarks,
+def generate_report(all_remarks: dict[RemarkKey, Remark],
+                    file_remarks: DictFile2Remarks,
                     source_dir: str,
                     output_dir: str,
                     should_display_hotness: bool,

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from __future__ import annotations
 import io
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypedDict
 import yaml
 import platform
 import html
@@ -52,6 +52,12 @@ class EmptyLock(object):
 RemarkKey = tuple[str, str, str, str, int, int, str, tuple[tuple[str, ...]]]
 
 
+class DebugLoc(TypedDict):
+    File: str
+    Line: int
+    Column: int
+
+
 class Remark(yaml.YAMLObject):
     yaml_loader = Loader
 
@@ -59,7 +65,7 @@ class Remark(yaml.YAMLObject):
     Pass: str
     Name: str
     Function: str
-    DebugLoc: dict[str, str | int]
+    DebugLoc: DebugLoc
     Args: tuple[tuple[str, ...]]
     Hotness: int = 0
     max_hotness: int = 0
@@ -147,16 +153,16 @@ class Remark(yaml.YAMLObject):
         self._reduce_memory()
 
     @property
-    def File(self) -> str:  # noqa: N802
+    def File(self) -> str:
         return self.DebugLoc['File']
 
     @property
-    def Line(self) -> int:  # noqa: N802
-        return int(self.DebugLoc['Line'])
+    def Line(self) -> int:
+        return self.DebugLoc['Line']
 
     @property
-    def Column(self) -> int:  # noqa: N802
-        return int(self.DebugLoc['Column'])
+    def Column(self) -> int:
+        return self.DebugLoc['Column']
 
     @property
     def debug_loc_string(self) -> str:

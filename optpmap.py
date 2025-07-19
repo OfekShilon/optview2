@@ -1,9 +1,9 @@
 from __future__ import annotations
 import sys
 import multiprocessing
-from typing import TYPE_CHECKING, TypeVar, Any
+from typing import TYPE_CHECKING, ItemsView, TypeVar, Any
 if TYPE_CHECKING:
-    from collections.abc import Callable, Sequence
+    from collections.abc import Callable
     from multiprocessing.sharedctypes import Synchronized
 
 
@@ -21,19 +21,7 @@ def _init(current: Synchronized[int], total: Synchronized[int]):
 T = TypeVar('T')
 
 
-def _wrapped_func(func_and_args: tuple[Callable[..., T], Any, *tuple[Any, ...]]) -> T:
-    func = func_and_args[0]
-    args = func_and_args[1:]
-
-    with _current.get_lock():
-        _current.value += 1
-    sys.stdout.write('\r\t{} of {}'.format(_current.value, _total.value))
-    sys.stdout.flush()
-
-    return func(*args)
-
-
-def parallel_map(func: Callable[[Any], T], iterable: Sequence, processes: int, *args: object) -> list[T]:
+def parallel_map(func: Callable[..., T], iterable: ItemsView[Any, Any], processes: int, *args: object) -> list[T]:
     """
     A parallel map function that reports on its progress.
 
@@ -46,9 +34,19 @@ def parallel_map(func: Callable[[Any], T], iterable: Sequence, processes: int, *
     _current = multiprocessing.Value('i', 0)
     _total = multiprocessing.Value('i', len(iterable))
 
+    def _wrapped_func(func_and_args: tuple[Callable[..., T], *tuple[Any, ...]]) -> T:
+        func = func_and_args[0]
+        args = func_and_args[1:]
+
+        with _current.get_lock():
+            _current.value += 1
+        sys.stdout.write('\r\t{} of {}'.format(_current.value, _total.value))
+        sys.stdout.flush()
+
+        return func(*args)
     func_and_args = [(func, it_arg, *args) for it_arg in iterable]
     if processes == 1:
-        result = list(map(_wrapped_func, func_and_args))
+        result: list[T] = list(map(_wrapped_func, func_and_args))
     else:
         pool = multiprocessing.Pool(initializer=_init,
                                     initargs=(_current, _total,),

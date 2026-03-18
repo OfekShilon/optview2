@@ -38,7 +38,7 @@ def html_file_name(filename: str) -> str:
 
 
 def make_link(file: str, line: int) -> str:
-    return f'"{html_file_name(file)}#L{line}\''
+    return f'\'{html_file_name(file)}#L{line}\''
 
 
 class EmptyLock(object):
